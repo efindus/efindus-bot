@@ -359,13 +359,55 @@ client.on('interactionCreate', async (interaction) => {
 				break;
 			}
 
+			case 'queue': {
+				try {
+					const queue = players[interaction.guild.id].queue;
+					let formattedQueue = 'Current queue:\n';
+
+					for(let i = 0; i < queue.length; i++) {
+						formattedQueue += `[${i}] [${queue[i].title.slice(0, 75)} [${queue[i].duration}]](${queue[i].url}) by **${queue[i].author.slice(0, 45)}**\n`;
+					}
+
+					if (formattedQueue.length > 2000) {
+						formattedQueue = formattedQueue.slice(0, 1997);
+						formattedQueue += '...';
+					}
+
+					interaction.reply({
+						embeds: [
+							{
+								title: 'Queue',
+								description: formattedQueue,
+								color: 0x249e43,
+								author: {
+									name: client.user.username,
+									iconURL: client.user.displayAvatarURL(),
+								},
+							},
+						],
+					});
+				} catch(error) {
+					console.log(error);
+					interaction.reply({
+						embeds: [
+							new MessageEmbed()
+								.setDescription(`**${error.message}**`)
+								.setColor(0xcf1d32)
+								.setAuthor(client.user.username, client.user.displayAvatarURL()),
+						],
+					});
+				}
+
+				break;
+			}
+
 			default: {
-				interaction.editReply({
+				interaction.reply({
 					embeds: [
 						{
 							title: 'Failed!',
 							description: 'This command isn\'t implemented yet.',
-							color: 0x249e43,
+							color: 0xcf1d32,
 							author: {
 								name: client.user.username,
 								iconURL: client.user.displayAvatarURL(),
@@ -421,12 +463,12 @@ client.on('interactionCreate', async (interaction) => {
 			}
 
 			default: {
-				interaction.editReply({
+				interaction.reply({
 					embeds: [
 						{
 							title: 'Failed!',
 							description: 'This command isn\'t implemented yet.',
-							color: 0x249e43,
+							color: 0xcf1d32,
 							author: {
 								name: client.user.username,
 								iconURL: client.user.displayAvatarURL(),
