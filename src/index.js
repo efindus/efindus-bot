@@ -361,16 +361,17 @@ client.on('interactionCreate', async (interaction) => {
 
 			case 'queue': {
 				try {
+					checkConnection(interaction);
 					const player = players[interaction.guild.id];
 
 					let formattedQueue = '';
 
 					if (player.nowPlaying !== null) {
-						formattedQueue += `:play_pause: Currently playing:\n[${player.nowPlaying.title.slice(0, 75)} [${player.nowPlaying.duration}]](${player.nowPlaying.url}) by **${player.nowPlaying.author.slice(0, 45)}**\n\n`;
+						formattedQueue += `:play_pause: **Currently playing:**\n[${player.nowPlaying.title.slice(0, 75)} [${player.nowPlaying.duration}]](${player.nowPlaying.url}) by **${player.nowPlaying.author.slice(0, 45)}**\n\n`;
 					}
 
 					if (player.queue.length !== 0) {
-						formattedQueue += ':notepad_spiral: **Current queue:**\n';
+						formattedQueue += `:notepad_spiral: **Current queue [${player.queue.length}]:**\n`;
 						for(let i = 0; i < player.queue.length; i++) {
 							formattedQueue += `**[${i}]** [${player.queue[i].title.slice(0, 75)} [${player.queue[i].duration}]](${player.queue[i].url}) by **${player.queue[i].author.slice(0, 45)}**\n`;
 						}
