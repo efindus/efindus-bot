@@ -361,22 +361,31 @@ client.on('interactionCreate', async (interaction) => {
 
 			case 'queue': {
 				try {
-					const queue = players[interaction.guild.id].queue;
-					let formattedQueue = 'Current queue:\n';
+					const player = players[interaction.guild.id];
 
-					for(let i = 0; i < queue.length; i++) {
-						formattedQueue += `[${i}] [${queue[i].title.slice(0, 75)} [${queue[i].duration}]](${queue[i].url}) by **${queue[i].author.slice(0, 45)}**\n`;
+					let formattedQueue = '';
+
+					if (player.nowPlaying !== null) {
+						formattedQueue += `:play_pause: Currently playing:\n[${player.nowPlaying.title.slice(0, 75)} [${player.nowPlaying.duration}]](${player.nowPlaying.url}) by **${player.nowPlaying.author.slice(0, 45)}**\n\n`;
+					}
+
+					if (player.queue.length !== 0) {
+						formattedQueue += ':notepad_spiral: **Current queue:**\n';
+						for(let i = 0; i < player.queue.length; i++) {
+							formattedQueue += `**[${i}]** [${player.queue[i].title.slice(0, 75)} [${player.queue[i].duration}]](${player.queue[i].url}) by **${player.queue[i].author.slice(0, 45)}**\n`;
+						}
 					}
 
 					if (formattedQueue.length > 2000) {
 						formattedQueue = formattedQueue.slice(0, 1997);
 						formattedQueue += '...';
+					} else if (formattedQueue.length === 0) {
+						formattedQueue = '<:cross:537885611865145367> **Nothing is currently playing!**';
 					}
 
 					interaction.reply({
 						embeds: [
 							{
-								title: 'Queue',
 								description: formattedQueue,
 								color: 0x249e43,
 								author: {
