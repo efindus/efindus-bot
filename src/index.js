@@ -228,8 +228,7 @@ client.on('interactionCreate', async (interaction) => {
 
 	if(interaction.isCommand()) {
 		switch(interaction.commandName) {
-			case 'play':
-			{
+			case 'play': {
 				await interaction.deferReply();
 
 				try {
@@ -272,8 +271,7 @@ client.on('interactionCreate', async (interaction) => {
 				break;
 			}
 
-			case 'search':
-			{
+			case 'search': {
 				interaction.deferReply();
 
 				try {
@@ -285,16 +283,16 @@ client.on('interactionCreate', async (interaction) => {
 						.setCustomId('search')
 						.setPlaceholder('Select a video');
 					/*
-MessageSelectMenu {
-type: 'SELECT_MENU',
-customId: 'search',
-placeholder: 'Select a video',
-minValues: null,
-maxValues: null,
-options: [],
-disabled: false
-}
-*/
+						MessageSelectMenu {
+							type: 'SELECT_MENU',
+							customId: 'search',
+							placeholder: 'Select a video',
+							minValues: null,
+							maxValues: null,
+							options: [],
+							disabled: false
+						}
+					*/
 
 					results.forEach((video) => {
 						videos.addOptions([
@@ -330,11 +328,7 @@ disabled: false
 				break;
 			}
 
-			case 'skip':
-			{
-
-				// players[guildId].resource
-
+			case 'skip': {
 				try {
 					checkConnection(interaction);
 					players[interaction.guild.id].resource.playStream.destroy();
@@ -366,13 +360,24 @@ disabled: false
 			}
 
 			default: {
-				break;
+				interaction.editReply({
+					embeds: [
+						{
+							title: 'Failed!',
+							description: 'This command isn\'t implemented yet.',
+							color: 0x249e43,
+							author: {
+								name: client.user.username,
+								iconURL: client.user.displayAvatarURL(),
+							},
+						},
+					],
+				});
 			}
 		}
 	} else if(interaction.isSelectMenu()) {
 		switch(interaction.customId) {
-			case 'search':
-			{
+			case 'search': {
 				await interaction.deferReply();
 
 				try {
@@ -416,7 +421,19 @@ disabled: false
 			}
 
 			default: {
-				break;
+				interaction.editReply({
+					embeds: [
+						{
+							title: 'Failed!',
+							description: 'This command isn\'t implemented yet.',
+							color: 0x249e43,
+							author: {
+								name: client.user.username,
+								iconURL: client.user.displayAvatarURL(),
+							},
+						},
+					],
+				});
 			}
 		}
 	}
