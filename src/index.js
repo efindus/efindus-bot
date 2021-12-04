@@ -2,7 +2,7 @@ require('dotenv').config();
 const { Client, MessageEmbed, MessageSelectMenu, MessageActionRow } = require('discord.js');
 const { entersState, joinVoiceChannel, createAudioPlayer, NoSubscriberBehavior, createAudioResource, VoiceConnectionStatus } = require('@discordjs/voice');
 const search = require('ytsr');
-const download = require('ytdl-core');
+const download = require('youtube-dl-exec').exec;
 
 // https://github.com/discordjs/voice/tree/main/examples/music-bot/src/music
 
@@ -206,7 +206,14 @@ const play = async (guildId) => {
 
 	players[guildId].nowPlaying = players[guildId].queue.shift();
 
-	const resource = createAudioResource(download(players[guildId].nowPlaying.url, { quality: 'highestaudio' }));
+	const stream = download(players[guildId].nowPlaying.url, {
+		o: '-',
+		q: '',
+		f: 'bestaudio[ext=webm+acodec=opus+asr=48000]/bestaudio',
+		r: '100K',
+	}, { stdio: ['ignore', 'pipe', 'ignore'] });
+
+	const resource = createAudioResource(stream.stdout);
 
 	resource.playStream.on('end', () => {
 		players[guildId].nowPlaying = null;
@@ -555,6 +562,14 @@ client.on('interactionCreate', async (interaction) => {
 			}
 		}
 	}
+});
+
+process.on('uncaughtException', error => {
+	console.log(error);
+});
+
+process.on('unhandledRejection', error => {
+	console.log(error);
 });
 
 client.login(process.env.TOKEN);

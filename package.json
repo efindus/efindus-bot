@@ -16,7 +16,7 @@
     "dotenv": "^10.0.0",
     "libsodium-wrappers": "^0.7.9",
     "sodium": "^3.0.2",
-    "ytdl-core": "^4.9.1",
+    "youtube-dl-exec": "^2.0.0",
     "ytsr": "^3.5.3"
   },
   "devDependencies": {
