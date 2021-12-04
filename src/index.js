@@ -331,27 +331,73 @@ client.on('interactionCreate', async (interaction) => {
 			case 'skip': {
 				try {
 					checkConnection(interaction);
-					players[interaction.guild.id].resource.playStream.destroy();
-					players[interaction.guild.id].nowPlaying = null;
 
-					await play(interaction.guild.id);
+					const index = interaction.options.getNumber('position');
 
-					interaction.reply({
-						embeds: [
-							new MessageEmbed()
-								.setDescription('**Video has been skipped!**')
-								.setColor(0x249e43)
-								.setAuthor(client.user.username, client.user.displayAvatarURL()),
-						],
-					});
+					if (!index) {
+						players[interaction.guild.id].resource.playStream.destroy();
+						players[interaction.guild.id].nowPlaying = null;
+
+						await play(interaction.guild.id);
+
+						interaction.reply({
+							embeds: [
+								{
+									description: '**Video has been skipped!**',
+									color: 0x249e43,
+									author: {
+										name: client.user.username,
+										iconURL: client.user.displayAvatarURL(),
+									},
+								},
+							],
+						});
+					} else {
+						const queue = players[interaction.guild.id].queue;
+
+						if (queue.length <= index || index < 0) {
+							interaction.reply({
+								embeds: [
+									{
+										description: '**Invalid index!**',
+										color: 0xcf1d32,
+										author: {
+											name: client.user.username,
+											iconURL: client.user.displayAvatarURL(),
+										},
+									},
+								],
+							});
+						} else {
+							const removed = queue.splice(index, 1)[0]
+							interaction.reply({
+								embeds: [
+									{
+										description: `[${removed.title.slice(0, 75)} [${removed.duration}]](${removed.url}) by **${removed.author.slice(0, 45)}** has been skipped!`,
+										color: 0x249e43,
+										author: {
+											name: client.user.username,
+											iconURL: client.user.displayAvatarURL(),
+										},
+									},
+								],
+							});
+						}
+					}
+
+					
 				} catch(error) {
 					console.log(error);
 					interaction.reply({
 						embeds: [
-							new MessageEmbed()
-								.setDescription(`**${error.message}**`)
-								.setColor(0xcf1d32)
-								.setAuthor(client.user.username, client.user.displayAvatarURL()),
+							{
+								description: `**${error.message}**`,
+								color: 0xcf1d32,
+								author: {
+									name: client.user.username,
+									iconURL: client.user.displayAvatarURL(),
+								},
+							},
 						],
 					});
 				}
