@@ -332,9 +332,29 @@ client.on('interactionCreate', async (interaction) => {
 				try {
 					checkConnection(interaction);
 
-					const index = interaction.options.getNumber('position');
+					let index = -1
 
-					if (!index) {
+					try {
+						index = interaction.options.getInteger('position');
+					} catch(error) {
+						interaction.reply({
+							embeds: [
+								{
+									description: `**Invalid index value**`,
+									color: 0xcf1d32,
+									author: {
+										name: client.user.username,
+										iconURL: client.user.displayAvatarURL(),
+									},
+								},
+							],
+						});
+
+						break;
+					}
+					
+
+					if (index === null) {
 						players[interaction.guild.id].resource.playStream.destroy();
 						players[interaction.guild.id].nowPlaying = null;
 
