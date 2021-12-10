@@ -339,7 +339,7 @@ client.on('interactionCreate', async (interaction) => {
 				try {
 					checkConnection(interaction);
 
-					let index = -1
+					let index = -1;
 
 					try {
 						index = interaction.options.getInteger('position');
@@ -347,7 +347,7 @@ client.on('interactionCreate', async (interaction) => {
 						interaction.reply({
 							embeds: [
 								{
-									description: `**Invalid index value**`,
+									description: '**Invalid index value**',
 									color: 0xcf1d32,
 									author: {
 										name: client.user.username,
@@ -359,7 +359,6 @@ client.on('interactionCreate', async (interaction) => {
 
 						break;
 					}
-					
 
 					if (index === null) {
 						players[interaction.guild.id].resource.playStream.destroy();
@@ -396,7 +395,7 @@ client.on('interactionCreate', async (interaction) => {
 								],
 							});
 						} else {
-							const removed = queue.splice(index, 1)[0]
+							const removed = queue.splice(index, 1)[0];
 							interaction.reply({
 								embeds: [
 									{
@@ -412,7 +411,7 @@ client.on('interactionCreate', async (interaction) => {
 						}
 					}
 
-					
+
 				} catch(error) {
 					console.log(error);
 					interaction.reply({
