@@ -117,19 +117,19 @@ const players = {};
  * @param {import("discord.js").Interaction} interaction - User's interaction.
  */
 const connectToChannel = async (interaction) => {
-	if(!interaction.member.voice.channel) {
+	if (!interaction.member.voice.channel) {
 		// Problem Exists Between Keyboard And Chair
 		throw new Error('PEBKAC:You\'re not connected to any voice channel on this server.');
 	}
 
-	if(!interaction.guild.me.voice.channel) {
+	if (!interaction.guild.me.voice.channel) {
 		const connection = await joinVoiceChannel({
 			channelId: interaction.member.voice.channelId,
 			guildId: interaction.guildId,
 			adapterCreator: interaction.guild.voiceAdapterCreator,
 		});
 
-		if(players[interaction.guild.id]) {
+		if (players[interaction.guild.id]) {
 			return;
 		}
 
@@ -157,7 +157,7 @@ const connectToChannel = async (interaction) => {
 		} catch {
 			throw new Error('Failed to join the voice channel within 20 seconds. Please try again later.');
 		}
-	} else if(interaction.member.voice.channelId !== interaction.guild.me.voice.channelId) {
+	} else if (interaction.member.voice.channelId !== interaction.guild.me.voice.channelId) {
 		throw new Error(`PEBKAC:You're not connected to <#${interaction.guild.me.voice.channelId}>`);
 	}
 };
@@ -168,11 +168,11 @@ const connectToChannel = async (interaction) => {
  */
 
 const checkConnection = (interaction) => {
-	if(!interaction.guild.me.voice.channel) {
+	if (!interaction.guild.me.voice.channel) {
 		throw new Error('PEBKAC:I\'m not connected to any voice channel on this server.');
 	}
 
-	if(interaction.member.voice.channelId !== interaction.guild.me.voice.channelId) {
+	if (interaction.member.voice.channelId !== interaction.guild.me.voice.channelId) {
 		throw new Error(`PEBKAC:You're not connected to <#${interaction.guild.me.voice.channelId}>`);
 	}
 };
@@ -192,7 +192,7 @@ const addToQueue = async (video, guildId) => {
 		resource: null,
 	});
 
-	if(!players[guildId].nowPlaying) {
+	if (!players[guildId].nowPlaying) {
 		await play(guildId);
 		return 0;
 	}
@@ -210,13 +210,13 @@ const addToQueue = async (video, guildId) => {
 const findVideos = async (title, limit) => {
 	const url = (await search.getFilters(title)).get('Type').get('Video').url;
 
-	if(!url) {
+	if (!url) {
 		throw new Error('PEBKAC:Video could not be found.');
 	}
 
 	const results = await search(url, { limit: limit });
 
-	if(results.items.length === 0) {
+	if (results.items.length === 0) {
 		throw new Error('PEBKAC:Video could not be found.');
 	}
 
@@ -224,7 +224,7 @@ const findVideos = async (title, limit) => {
 };
 
 const play = async (guildId) => {
-	if(players[guildId].nowPlaying || players[guildId].queue.length === 0) {
+	if (players[guildId].nowPlaying || players[guildId].queue.length === 0) {
 		return;
 	}
 
@@ -256,15 +256,15 @@ const play = async (guildId) => {
 };
 
 client.on('interactionCreate', async (interaction) => {
-	if(!interaction.guild) {
+	if (!interaction.guild) {
 		return;
 	}
 
 	try {
 		await interaction.deferReply();
 
-		if(interaction.isCommand()) {
-			switch(interaction.commandName) {
+		if (interaction.isCommand()) {
+			switch (interaction.commandName) {
 				case 'play': {
 					await connectToChannel(interaction);
 
@@ -334,7 +334,7 @@ client.on('interactionCreate', async (interaction) => {
 
 					try {
 						index = interaction.options.getInteger('position');
-					} catch(error) {
+					} catch (error) {
 						throw new Error('PEBKAC:Invalid index value!');
 					}
 
@@ -393,12 +393,12 @@ client.on('interactionCreate', async (interaction) => {
 					let formattedQueue = '';
 
 					if (player.nowPlaying !== null) {
-						formattedQueue += `:play_pause: **Currently playing${player.loopType === 0 ? '' : ` [loop: ${player.loopType === 1 ? 'video' : 'queue'}]`}:**\n**[0]** [${player.nowPlaying.title.slice(0, 75)} [${player.nowPlaying.duration}]](${player.nowPlaying.url}) by **${player.nowPlaying.author.slice(0, 45)}**\n\n`;
+						formattedQueue += `:play_pause: **Currently playing${player.loopType === 0 ? '' : ` [loop: ${player.loopType === 1 ? 'video' : 'queue'}]`}:**\n**[0]** [${player.nowPlaying.title.slice(0, 75)} [${Math.floor(player.player.state.playbackDuration / 1000 / 60 / 60) >= 1 ? `${Math.floor(player.player.state.playbackDuration / 1000 / 60 / 60)}:` : ''}${Math.floor(player.player.state.playbackDuration / 1000 / 60) || '0'}:${`${Math.floor(player.player.state.playbackDuration / 1000) || '00'}`.padStart(2, '0')}/${player.nowPlaying.duration}]](${player.nowPlaying.url}) by **${player.nowPlaying.author.slice(0, 45)}**\n\n`;
 					}
 
 					if (player.queue.length !== 0) {
 						formattedQueue += `:notepad_spiral: **Current queue [${player.queue.length}]:**\n`;
-						for(let i = 0; i < player.queue.length; i++) {
+						for (let i = 0; i < player.queue.length; i++) {
 							formattedQueue += `**[${i + 1}]** [${player.queue[i].title.slice(0, 75)} [${player.queue[i].duration}]](${player.queue[i].url}) by **${player.queue[i].author.slice(0, 45)}**\n`;
 						}
 					}
@@ -483,7 +483,7 @@ client.on('interactionCreate', async (interaction) => {
 					let type, replyMessage;
 					try {
 						type = interaction.options.getString('type', false);
-					} catch(error) {
+					} catch (error) {
 						throw new Error('PEBKAC:Invalid loop type!');
 					}
 
@@ -538,8 +538,8 @@ client.on('interactionCreate', async (interaction) => {
 					});
 				}
 			}
-		} else if(interaction.isSelectMenu()) {
-			switch(interaction.customId) {
+		} else if (interaction.isSelectMenu()) {
+			switch (interaction.customId) {
 				case 'search': {
 					await connectToChannel(interaction);
 
@@ -583,7 +583,7 @@ client.on('interactionCreate', async (interaction) => {
 				}
 			}
 		}
-	} catch(error) {
+	} catch (error) {
 		if (!error.message || !error.message.startsWith('PEBKAC:')) console.log(error);
 		else error.message = error.message.replace('PEBKAC:', '');
 
