@@ -1,4 +1,5 @@
 require('dotenv').config();
+require('./array.utils');
 const { Client } = require('discord.js');
 const { entersState, joinVoiceChannel, createAudioPlayer, NoSubscriberBehavior, createAudioResource, VoiceConnectionStatus } = require('@discordjs/voice');
 const search = require('ytsr');
@@ -64,6 +65,9 @@ client.on('ready', () => {
 		}, {
 			name: 'pause',
 			description: 'Pause the video.',
+		}, {
+			name: 'resume',
+			description: 'Resume the video.',
 		}, {
 			name: 'loop',
 			description: 'Loop the video.',
@@ -413,6 +417,31 @@ client.on('interactionCreate', async (interaction) => {
 							embeds: [
 								{
 									description: '<:check:537885340304932875> **Cleared the queue!**',
+									color: 0x249e43,
+									author: {
+										name: client.user.username,
+										iconURL: client.user.displayAvatarURL(),
+									},
+								},
+							],
+						});
+					}
+					break;
+				}
+
+				case 'shuffle': {
+					checkConnection(interaction);
+					const player = players[interaction.guild.id];
+
+					if (player.queue.length === 0) {
+						throw new Error('PEBKAC:The queue is empty!');
+					} else {
+						player.queue.shuffle();
+
+						interaction.editReply({
+							embeds: [
+								{
+									description: '<:check:537885340304932875> **Shuffled the queue!**',
 									color: 0x249e43,
 									author: {
 										name: client.user.username,
