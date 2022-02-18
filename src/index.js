@@ -122,7 +122,7 @@ const connectToChannel = async (interaction) => {
 		throw new Error('PEBKAC:You\'re not connected to any voice channel on this server.');
 	}
 
-	if (!interaction.guild.me.voice.channel) {
+	if (!interaction.guild.me.voice.channel || !players[interaction.guild.id]) {
 		const connection = await joinVoiceChannel({
 			channelId: interaction.member.voice.channelId,
 			guildId: interaction.guildId,
@@ -168,7 +168,7 @@ const connectToChannel = async (interaction) => {
  */
 
 const checkConnection = (interaction) => {
-	if (!interaction.guild.me.voice.channel) {
+	if (!interaction.guild.me.voice.channel || !players[interaction.guild.id]) {
 		throw new Error('PEBKAC:I\'m not connected to any voice channel on this server.');
 	}
 
@@ -261,6 +261,7 @@ client.on('interactionCreate', async (interaction) => {
 	}
 
 	try {
+		let responseTitle = '', responseMessage = '', responseProps = {}, responseCustomFormatting = false;
 		await interaction.deferReply();
 
 		if (interaction.isCommand()) {
@@ -271,22 +272,14 @@ client.on('interactionCreate', async (interaction) => {
 					const results = await findVideos(interaction.options.getString('query'), 1);
 					const position = await addToQueue(results[0], interaction.guild.id);
 
-					interaction.editReply({
-						embeds: [
-							{
-								title: position === 0 ? 'Now playing!' : `<:check:537885340304932875> Video has been added to the queue! (#${position})`,
-								description: `[${results[0].title} [${results[0].duration}]](${results[0].url}) by **${results[0].author.name}**`,
-								thumbnail: {
-									url: results[0].bestThumbnail.url,
-								},
-								color: 0x249e43,
-								author: {
-									name: client.user.username,
-									iconURL: client.user.displayAvatarURL(),
-								},
-							},
-						],
-					});
+					responseCustomFormatting = true;
+					responseTitle = position === 0 ? 'Now playing!' : `<:check:537885340304932875> Video has been added to the queue! (#${position})`;
+					responseMessage = `[${results[0].title} [${results[0].duration}]](${results[0].url}) by **${results[0].author.name}**`;
+					responseProps = {
+						thumbnail: {
+							url: results[0].bestThumbnail.url,
+						},
+					};
 
 					break;
 				}
@@ -306,7 +299,7 @@ client.on('interactionCreate', async (interaction) => {
 						});
 					});
 
-					interaction.editReply({
+					responseProps = {
 						content: '**Select a video:**',
 						components: [
 							{
@@ -322,7 +315,7 @@ client.on('interactionCreate', async (interaction) => {
 							},
 						],
 						ephemeral: true,
-					});
+					};
 
 					break;
 				}
@@ -347,18 +340,7 @@ client.on('interactionCreate', async (interaction) => {
 
 							await play(interaction.guild.id);
 
-							interaction.editReply({
-								embeds: [
-									{
-										description: '<:check:537885340304932875> **Video has been skipped!**',
-										color: 0x249e43,
-										author: {
-											name: client.user.username,
-											iconURL: client.user.displayAvatarURL(),
-										},
-									},
-								],
-							});
+							responseMessage = 'Video has been skipped!';
 						}
 					} else {
 						const queue = players[interaction.guild.id].queue;
@@ -368,18 +350,8 @@ client.on('interactionCreate', async (interaction) => {
 							throw new Error('PEBKAC:Invalid index!');
 						} else {
 							const removed = queue.splice(index - 1, 1)[0];
-							interaction.editReply({
-								embeds: [
-									{
-										description: `<:check:537885340304932875> [${removed.title.slice(0, 75)} [${removed.duration}]](${removed.url}) by **${removed.author.slice(0, 45)}** has been skipped!`,
-										color: 0x249e43,
-										author: {
-											name: client.user.username,
-											iconURL: client.user.displayAvatarURL(),
-										},
-									},
-								],
-							});
+							responseCustomFormatting = true;
+							responseMessage = `<:check:537885340304932875> [${removed.title.slice(0, 75)} [${removed.duration}]](${removed.url}) by **${removed.author.slice(0, 45)}** has been skipped!`;
 						}
 					}
 
@@ -410,18 +382,8 @@ client.on('interactionCreate', async (interaction) => {
 						formattedQueue = '<:cross:537885611865145367> **Nothing is currently playing!**';
 					}
 
-					interaction.editReply({
-						embeds: [
-							{
-								description: formattedQueue,
-								color: 0x249e43,
-								author: {
-									name: client.user.username,
-									iconURL: client.user.displayAvatarURL(),
-								},
-							},
-						],
-					});
+					responseCustomFormatting = true;
+					responseMessage = formattedQueue;
 
 					break;
 				}
@@ -435,18 +397,7 @@ client.on('interactionCreate', async (interaction) => {
 					} else {
 						player.queue = [];
 
-						interaction.editReply({
-							embeds: [
-								{
-									description: '<:check:537885340304932875> **Cleared the queue!**',
-									color: 0x249e43,
-									author: {
-										name: client.user.username,
-										iconURL: client.user.displayAvatarURL(),
-									},
-								},
-							],
-						});
+						responseMessage = 'Cleared the queue!';
 					}
 					break;
 				}
@@ -460,18 +411,7 @@ client.on('interactionCreate', async (interaction) => {
 					} else {
 						player.queue.shuffle();
 
-						interaction.editReply({
-							embeds: [
-								{
-									description: '<:check:537885340304932875> **Shuffled the queue!**',
-									color: 0x249e43,
-									author: {
-										name: client.user.username,
-										iconURL: client.user.displayAvatarURL(),
-									},
-								},
-							],
-						});
+						responseMessage = 'Shuffled the queue!';
 					}
 					break;
 				}
@@ -480,7 +420,7 @@ client.on('interactionCreate', async (interaction) => {
 					checkConnection(interaction);
 					const player = players[interaction.guild.id];
 
-					let type, replyMessage;
+					let type;
 					try {
 						type = interaction.options.getString('type', false);
 					} catch (error) {
@@ -490,35 +430,23 @@ client.on('interactionCreate', async (interaction) => {
 					switch (type) {
 						case 'none': {
 							player.loopType = 0;
-							replyMessage = 'Disabled loop!';
+							responseMessage = 'Disabled loop!';
 							break;
 						}
 
 						case 'queue': {
 							player.loopType = 2;
-							replyMessage = 'Enabled queue looping!';
+							responseMessage = 'Enabled queue looping!';
 							break;
 						}
 
 						default: {
 							player.loopType = 1;
-							replyMessage = 'Enabled video looping!';
+							responseMessage = 'Enabled video looping!';
 							break;
 						}
 					}
 
-					interaction.editReply({
-						embeds: [
-							{
-								description: `<:check:537885340304932875> **${replyMessage}**`,
-								color: 0x249e43,
-								author: {
-									name: client.user.username,
-									iconURL: client.user.displayAvatarURL(),
-								},
-							},
-						],
-					});
 					break;
 				}
 
@@ -528,18 +456,7 @@ client.on('interactionCreate', async (interaction) => {
 					players[interaction.guild.id].connection.destroy();
 					delete players[interaction.guild.id];
 
-					interaction.editReply({
-						embeds: [
-							{
-								description: '<:check:537885340304932875> **Successfully left the voice channel!**',
-								color: 0x249e43,
-								author: {
-									name: client.user.username,
-									iconURL: client.user.displayAvatarURL(),
-								},
-							},
-						],
-					});
+					responseMessage = 'Successfully left the voice channel!';
 					break;
 				}
 
@@ -556,18 +473,7 @@ client.on('interactionCreate', async (interaction) => {
 					}
 
 					if (player.player.pause()) {
-						interaction.editReply({
-							embeds: [
-								{
-									description: '<:check:537885340304932875> **Paused the video!**',
-									color: 0x249e43,
-									author: {
-										name: client.user.username,
-										iconURL: client.user.displayAvatarURL(),
-									},
-								},
-							],
-						});
+						responseMessage = 'Paused the video!';
 					} else throw new Error('PEBKAC:Failed to pause the video!');
 
 					break;
@@ -586,18 +492,7 @@ client.on('interactionCreate', async (interaction) => {
 					}
 
 					if (player.player.unpause()) {
-						interaction.editReply({
-							embeds: [
-								{
-									description: '<:check:537885340304932875> **Resumed the video!**',
-									color: 0x249e43,
-									author: {
-										name: client.user.username,
-										iconURL: client.user.displayAvatarURL(),
-									},
-								},
-							],
-						});
+						responseMessage = 'Resumed the video!';
 					} else throw new Error('PEBKAC:Failed to resume the video!');
 
 					break;
@@ -627,22 +522,14 @@ client.on('interactionCreate', async (interaction) => {
 					const results = await findVideos(interaction.values[0]);
 					const position = await addToQueue(results[0], interaction.guild.id);
 
-					interaction.editReply({
-						embeds: [
-							{
-								title: position === 0 ? 'Now playing!' : `<:check:537885340304932875> Video has been added to the queue! (#${position})`,
-								description: `[${results[0].title} [${results[0].duration}]](${results[0].url}) by **${results[0].author.name}**`,
-								thumbnail: {
-									url: results[0].bestThumbnail.url,
-								},
-								color: 0x249e43,
-								author: {
-									name: client.user.username,
-									iconURL: client.user.displayAvatarURL(),
-								},
-							},
-						],
-					});
+					responseCustomFormatting = true;
+					responseTitle = position === 0 ? 'Now playing!' : `<:check:537885340304932875> Video has been added to the queue! (#${position})`;
+					responseMessage = `[${results[0].title} [${results[0].duration}]](${results[0].url}) by **${results[0].author.name}**`;
+					responseProps = {
+						thumbnail: {
+							url: results[0].bestThumbnail.url,
+						},
+					};
 
 					break;
 				}
@@ -663,6 +550,27 @@ client.on('interactionCreate', async (interaction) => {
 					});
 				}
 			}
+		}
+
+		if (responseProps.content) {
+			interaction.editReply({
+				...responseProps,
+			});
+		} else {
+			interaction.editReply({
+				embeds: [
+					{
+						title: responseTitle,
+						description: responseMessage.length !== 0 ? (responseCustomFormatting ? responseMessage : `<:check:537885340304932875> **${responseMessage}**`) : null,
+						color: 0x249e43,
+						author: {
+							name: client.user.username,
+							iconURL: client.user.displayAvatarURL(),
+						},
+						...responseProps,
+					},
+				],
+			});
 		}
 	} catch (error) {
 		if (!error.message || !error.message.startsWith('PEBKAC:')) console.log(error);
