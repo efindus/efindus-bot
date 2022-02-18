@@ -234,12 +234,12 @@ client.on('interactionCreate', async (interaction) => {
 		return;
 	}
 
-	if(interaction.isCommand()) {
-		switch(interaction.commandName) {
-			case 'play': {
-				await interaction.deferReply();
+	try {
+		await interaction.deferReply();
 
-				try {
+		if(interaction.isCommand()) {
+			switch(interaction.commandName) {
+				case 'play': {
 					await connectToChannel(interaction);
 
 					const results = await findVideos(interaction.options.getString('query'), 1);
@@ -261,31 +261,11 @@ client.on('interactionCreate', async (interaction) => {
 							},
 						],
 					});
-				} catch(error) {
-					if (!error.message || !error.message.startsWith('PEBKAC:')) console.log(error);
-					else error.message = error.message.replace('PEBKAC:', '');
 
-					interaction.editReply({
-						embeds: [
-							{
-								description: `<:cross:537885611865145367> **${error.message}**`,
-								color: 0xcf1d32,
-								author: {
-									name: client.user.username,
-									iconURL: client.user.displayAvatarURL(),
-								},
-							},
-						],
-					});
+					break;
 				}
 
-				break;
-			}
-
-			case 'search': {
-				await interaction.deferReply();
-
-				try {
+				case 'search': {
 					await connectToChannel(interaction);
 
 					const results = await findVideos(interaction.options.getString('query'), 10);
@@ -317,31 +297,11 @@ client.on('interactionCreate', async (interaction) => {
 						],
 						ephemeral: true,
 					});
-				} catch(error) {
-					if (!error.message || !error.message.startsWith('PEBKAC:')) console.log(error);
-					else error.message = error.message.replace('PEBKAC:', '');
 
-					interaction.editReply({
-						embeds: [
-							{
-								title: 'Failed!',
-								description: `<:cross:537885611865145367> **${error.message}**`,
-								color: 0xcf1d32,
-								author: {
-									name: client.user.username,
-									iconURL: client.user.displayAvatarURL(),
-								},
-							},
-						],
-						ephemeral: true,
-					});
+					break;
 				}
 
-				break;
-			}
-
-			case 'skip': {
-				try {
+				case 'skip': {
 					checkConnection(interaction);
 
 					let index = -1;
@@ -349,43 +309,19 @@ client.on('interactionCreate', async (interaction) => {
 					try {
 						index = interaction.options.getInteger('position');
 					} catch(error) {
-						interaction.reply({
-							embeds: [
-								{
-									description: '<:cross:537885611865145367> **Invalid index value**',
-									color: 0xcf1d32,
-									author: {
-										name: client.user.username,
-										iconURL: client.user.displayAvatarURL(),
-									},
-								},
-							],
-						});
-
-						break;
+						throw new Error('PEBKAC:Invalid index value!');
 					}
 
 					if (index === null) {
 						if (players[interaction.guild.id].queue.length === 0 && players[interaction.guild.id].nowPlaying === null) {
-							interaction.reply({
-								embeds: [
-									{
-										description: '<:cross:537885611865145367> **Nothing is currently playing!**',
-										color: 0xcf1d32,
-										author: {
-											name: client.user.username,
-											iconURL: client.user.displayAvatarURL(),
-										},
-									},
-								],
-							});
+							throw new Error('PEBKAC:Nothing is currently playing!');
 						} else {
 							players[interaction.guild.id].resource.playStream.destroy();
 							players[interaction.guild.id].nowPlaying = null;
 
 							await play(interaction.guild.id);
 
-							interaction.reply({
+							interaction.editReply({
 								embeds: [
 									{
 										description: '<:check:537885340304932875> **Video has been skipped!**',
@@ -401,34 +337,12 @@ client.on('interactionCreate', async (interaction) => {
 					} else {
 						const queue = players[interaction.guild.id].queue;
 						if (queue.length === 0) {
-							interaction.reply({
-								embeds: [
-									{
-										description: '<:cross:537885611865145367> **The queue is empty!**',
-										color: 0xcf1d32,
-										author: {
-											name: client.user.username,
-											iconURL: client.user.displayAvatarURL(),
-										},
-									},
-								],
-							});
+							throw new Error('PEBKAC:The queue is empty!');
 						} else if (queue.length <= index || index < 0) {
-							interaction.reply({
-								embeds: [
-									{
-										description: '<:cross:537885611865145367> **Invalid index!**',
-										color: 0xcf1d32,
-										author: {
-											name: client.user.username,
-											iconURL: client.user.displayAvatarURL(),
-										},
-									},
-								],
-							});
+							throw new Error('PEBKAC:Invalid index!');
 						} else {
 							const removed = queue.splice(index, 1)[0];
-							interaction.reply({
+							interaction.editReply({
 								embeds: [
 									{
 										description: `<:check:537885340304932875> [${removed.title.slice(0, 75)} [${removed.duration}]](${removed.url}) by **${removed.author.slice(0, 45)}** has been skipped!`,
@@ -442,29 +356,11 @@ client.on('interactionCreate', async (interaction) => {
 							});
 						}
 					}
-				} catch(error) {
-					if (!error.message || !error.message.startsWith('PEBKAC:')) console.log(error);
-					else error.message = error.message.replace('PEBKAC:', '');
 
-					interaction.reply({
-						embeds: [
-							{
-								description: `<:cross:537885611865145367> **${error.message}**`,
-								color: 0xcf1d32,
-								author: {
-									name: client.user.username,
-									iconURL: client.user.displayAvatarURL(),
-								},
-							},
-						],
-					});
+					break;
 				}
 
-				break;
-			}
-
-			case 'queue': {
-				try {
+				case 'queue': {
 					checkConnection(interaction);
 					const player = players[interaction.guild.id];
 
@@ -488,7 +384,7 @@ client.on('interactionCreate', async (interaction) => {
 						formattedQueue = '<:cross:537885611865145367> **Nothing is currently playing!**';
 					}
 
-					interaction.reply({
+					interaction.editReply({
 						embeds: [
 							{
 								description: formattedQueue,
@@ -500,15 +396,16 @@ client.on('interactionCreate', async (interaction) => {
 							},
 						],
 					});
-				} catch(error) {
-					if (!error.message || !error.message.startsWith('PEBKAC:')) console.log(error);
-					else error.message = error.message.replace('PEBKAC:', '');
 
-					interaction.reply({
+					break;
+				}
+
+				default: {
+					interaction.editReply({
 						embeds: [
 							{
 								title: 'Failed!',
-								description: `<:cross:537885611865145367> **${error.message}**`,
+								description: '<:cross:537885611865145367> This command isn\'t implemented yet.',
 								color: 0xcf1d32,
 								author: {
 									name: client.user.username,
@@ -518,32 +415,10 @@ client.on('interactionCreate', async (interaction) => {
 						],
 					});
 				}
-
-				break;
 			}
-
-			default: {
-				interaction.reply({
-					embeds: [
-						{
-							title: 'Failed!',
-							description: '<:cross:537885611865145367> This command isn\'t implemented yet.',
-							color: 0xcf1d32,
-							author: {
-								name: client.user.username,
-								iconURL: client.user.displayAvatarURL(),
-							},
-						},
-					],
-				});
-			}
-		}
-	} else if(interaction.isSelectMenu()) {
-		switch(interaction.customId) {
-			case 'search': {
-				await interaction.deferReply();
-
-				try {
+		} else if(interaction.isSelectMenu()) {
+			switch(interaction.customId) {
+				case 'search': {
 					await connectToChannel(interaction);
 
 					const results = await findVideos(interaction.values[0]);
@@ -565,14 +440,16 @@ client.on('interactionCreate', async (interaction) => {
 							},
 						],
 					});
-				} catch(error) {
-					if (!error.message || !error.message.startsWith('PEBKAC:')) console.log(error);
-					else error.message = error.message.replace('PEBKAC:', '');
 
+					break;
+				}
+
+				default: {
 					interaction.editReply({
 						embeds: [
 							{
-								description: `<:cross:537885611865145367> **${error.message}**`,
+								title: 'Failed!',
+								description: '<:cross:537885611865145367> This command isn\'t implemented yet.',
 								color: 0xcf1d32,
 								author: {
 									name: client.user.username,
@@ -582,26 +459,24 @@ client.on('interactionCreate', async (interaction) => {
 						],
 					});
 				}
-
-				break;
-			}
-
-			default: {
-				interaction.reply({
-					embeds: [
-						{
-							title: 'Failed!',
-							description: '<:cross:537885611865145367> This command isn\'t implemented yet.',
-							color: 0xcf1d32,
-							author: {
-								name: client.user.username,
-								iconURL: client.user.displayAvatarURL(),
-							},
-						},
-					],
-				});
 			}
 		}
+	} catch(error) {
+		if (!error.message || !error.message.startsWith('PEBKAC:')) console.log(error);
+		else error.message = error.message.replace('PEBKAC:', '');
+
+		interaction.editReply({
+			embeds: [
+				{
+					description: `<:cross:537885611865145367> **${error.message}**`,
+					color: 0xcf1d32,
+					author: {
+						name: client.user.username,
+						iconURL: client.user.displayAvatarURL(),
+					},
+				},
+			],
+		});
 	}
 });
 
