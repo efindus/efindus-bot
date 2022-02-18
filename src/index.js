@@ -70,7 +70,26 @@ client.on('ready', () => {
 			description: 'Resume the video.',
 		}, {
 			name: 'loop',
-			description: 'Loop the video.',
+			description: 'Loop the video or the queue.',
+			options: [
+				{
+					name: 'type',
+					type: 'STRING',
+					description: 'Loop type (defaults to video)',
+					choices: [
+						{
+							name: 'disable',
+							value: 'none',
+						}, {
+							name: 'queue',
+							value: 'queue',
+						}, {
+							name: 'video',
+							value: 'single',
+						},
+					],
+				},
+			],
 		}, {
 			name: 'volume',
 			description: 'Change the volume.',
@@ -97,7 +116,6 @@ const players = {};
  * Connect to a voice channel.
  * @param {import("discord.js").Interaction} interaction - User's interaction.
  */
-
 const connectToChannel = async (interaction) => {
 	if(!interaction.member.voice.channel) {
 		// Problem Exists Between Keyboard And Chair
@@ -119,12 +137,13 @@ const connectToChannel = async (interaction) => {
 			nowPlaying: null,
 			queue: [],
 			paused: false,
-			looped: false,
+			loopType: 0, // 0 -> no loop; 1 -> single video loop; 2 -> queue loop;
 			player: createAudioPlayer({
 				behaviors: {
 					noSubscriber: NoSubscriberBehavior.Pause,
 				},
 			}),
+			connection,
 		};
 
 		/* players[interaction.guild.id].player.on("error", (err) =>
@@ -221,6 +240,9 @@ const play = async (guildId) => {
 	const resource = createAudioResource(stream.stdout);
 
 	resource.playStream.on('end', () => {
+		if (players[guildId].loopType === 1) players[guildId].queue.splice(0, 0, [players[guildId].nowPlaying]);
+		else if (players[guildId].loopType === 2) players[guildId].queue.push(players[guildId].nowPlaying);
+
 		players[guildId].nowPlaying = null;
 		play(guildId);
 	});
@@ -451,6 +473,52 @@ client.on('interactionCreate', async (interaction) => {
 							],
 						});
 					}
+					break;
+				}
+
+				case 'loop': {
+					checkConnection(interaction);
+					const player = players[interaction.guild.id];
+
+					let type, replyMessage;
+					try {
+						type = interaction.options.getString('type', false);
+					} catch(error) {
+						throw new Error('PEBKAC:Invalid loop type!');
+					}
+
+					switch (type) {
+						case 'none': {
+							player.loopType = 0;
+							replyMessage = 'Disabled loop!';
+							break;
+						}
+
+						case 'queue': {
+							player.loopType = 2;
+							replyMessage = 'Enabled queue looping!';
+							break;
+						}
+
+						default: {
+							player.loopType = 1;
+							replyMessage = 'Enabled video looping!';
+							break;
+						}
+					}
+
+					interaction.editReply({
+						embeds: [
+							{
+								description: `<:check:537885340304932875> **${replyMessage}**`,
+								color: 0x249e43,
+								author: {
+									name: client.user.username,
+									iconURL: client.user.displayAvatarURL(),
+								},
+							},
+						],
+					});
 					break;
 				}
 
