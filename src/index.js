@@ -1,5 +1,5 @@
 require('dotenv').config();
-const { Client, MessageEmbed, MessageSelectMenu, MessageActionRow } = require('discord.js');
+const { Client } = require('discord.js');
 const { entersState, joinVoiceChannel, createAudioPlayer, NoSubscriberBehavior, createAudioResource, VoiceConnectionStatus } = require('@discordjs/voice');
 const search = require('ytsr');
 const download = require('youtube-dl-exec').exec;
@@ -247,7 +247,7 @@ client.on('interactionCreate', async (interaction) => {
 					interaction.editReply({
 						embeds: [
 							{
-								title: position === 0 ? 'Now playing!' : `Video has been added to the queue! (#${position})`,
+								title: '<:check:537885340304932875> ' + (position === 0 ? 'Now playing!' : `Video has been added to the queue! (#${position})`),
 								description: `[${results[0].title} [${results[0].duration}]](${results[0].url}) by **${results[0].author.name}**`,
 								thumbnail: {
 									url: results[0].bestThumbnail.url,
@@ -264,7 +264,7 @@ client.on('interactionCreate', async (interaction) => {
 					interaction.editReply({
 						embeds: [
 							{
-								description: `**${error.message}**`,
+								description: `<:cross:537885611865145367> **${error.message}**`,
 								color: 0xcf1d32,
 								author: {
 									name: client.user.username,
@@ -286,47 +286,46 @@ client.on('interactionCreate', async (interaction) => {
 
 					const results = await findVideos(interaction.options.getString('query'), 10);
 
-					const videos = new MessageSelectMenu()
-						.setCustomId('search')
-						.setPlaceholder('Select a video');
-					/*
-						MessageSelectMenu {
-							type: 'SELECT_MENU',
-							customId: 'search',
-							placeholder: 'Select a video',
-							minValues: null,
-							maxValues: null,
-							options: [],
-							disabled: false
-						}
-					*/
+					const videos = [];
 
 					results.forEach((video) => {
-						videos.addOptions([
-							{
-								label: video.title,
-								description: video.author.name,
-								value: video.url,
-							},
-						]);
+						videos.push({
+							label: video.title,
+							description: video.author.name,
+							value: video.url,
+						});
 					});
 
 					interaction.editReply({
 						content: '**Select a video:**',
 						components: [
-							new MessageActionRow()
-								.addComponents(videos),
+							{
+								type: 'ACTION_ROW',
+								components: [
+									{
+										type: 'SELECT_MENU',
+										customId: 'search',
+										placeholder: 'Select a video',
+										options: videos,
+									},
+								],
+							},
 						],
 						ephemeral: true,
 					});
 				} catch(error) {
 					console.log(error);
-					interaction.editReply({
+					interaction.reply({
 						embeds: [
-							new MessageEmbed()
-								.setDescription(`**${error.message}**`)
-								.setColor(0xcf1d32)
-								.setAuthor(client.user.username, client.user.displayAvatarURL()),
+							{
+								title: 'Failed!',
+								description: `<:cross:537885611865145367> **${error.message}**`,
+								color: 0xcf1d32,
+								author: {
+									name: client.user.username,
+									iconURL: client.user.displayAvatarURL(),
+								},
+							},
 						],
 						ephemeral: true,
 					});
@@ -347,7 +346,7 @@ client.on('interactionCreate', async (interaction) => {
 						interaction.reply({
 							embeds: [
 								{
-									description: '**Invalid index value**',
+									description: '<:cross:537885611865145367> **Invalid index value**',
 									color: 0xcf1d32,
 									author: {
 										name: client.user.username,
@@ -361,31 +360,58 @@ client.on('interactionCreate', async (interaction) => {
 					}
 
 					if (index === null) {
-						players[interaction.guild.id].resource.playStream.destroy();
-						players[interaction.guild.id].nowPlaying = null;
-
-						await play(interaction.guild.id);
-
-						interaction.reply({
-							embeds: [
-								{
-									description: '**Video has been skipped!**',
-									color: 0x249e43,
-									author: {
-										name: client.user.username,
-										iconURL: client.user.displayAvatarURL(),
-									},
-								},
-							],
-						});
-					} else {
-						const queue = players[interaction.guild.id].queue;
-
-						if (queue.length <= index || index < 0) {
+						if (players[interaction.guild.id].queue.length === 0 && players[interaction.guild.id].nowPlaying === null) {
 							interaction.reply({
 								embeds: [
 									{
-										description: '**Invalid index!**',
+										description: '<:cross:537885611865145367> **Nothing is currently playing!**',
+										color: 0xcf1d32,
+										author: {
+											name: client.user.username,
+											iconURL: client.user.displayAvatarURL(),
+										},
+									},
+								],
+							});
+						} else {
+							players[interaction.guild.id].resource.playStream.destroy();
+							players[interaction.guild.id].nowPlaying = null;
+
+							await play(interaction.guild.id);
+
+							interaction.reply({
+								embeds: [
+									{
+										description: '<:check:537885340304932875> **Video has been skipped!**',
+										color: 0x249e43,
+										author: {
+											name: client.user.username,
+											iconURL: client.user.displayAvatarURL(),
+										},
+									},
+								],
+							});
+						}
+					} else {
+						const queue = players[interaction.guild.id].queue;
+						if (queue.length === 0) {
+							interaction.reply({
+								embeds: [
+									{
+										description: '<:cross:537885611865145367> **The queue is empty!**',
+										color: 0xcf1d32,
+										author: {
+											name: client.user.username,
+											iconURL: client.user.displayAvatarURL(),
+										},
+									},
+								],
+							});
+						} else if (queue.length <= index || index < 0) {
+							interaction.reply({
+								embeds: [
+									{
+										description: '<:cross:537885611865145367> **Invalid index!**',
 										color: 0xcf1d32,
 										author: {
 											name: client.user.username,
@@ -399,7 +425,7 @@ client.on('interactionCreate', async (interaction) => {
 							interaction.reply({
 								embeds: [
 									{
-										description: `[${removed.title.slice(0, 75)} [${removed.duration}]](${removed.url}) by **${removed.author.slice(0, 45)}** has been skipped!`,
+										description: `<:check:537885340304932875> [${removed.title.slice(0, 75)} [${removed.duration}]](${removed.url}) by **${removed.author.slice(0, 45)}** has been skipped!`,
 										color: 0x249e43,
 										author: {
 											name: client.user.username,
@@ -417,7 +443,7 @@ client.on('interactionCreate', async (interaction) => {
 					interaction.reply({
 						embeds: [
 							{
-								description: `**${error.message}**`,
+								description: `<:cross:537885611865145367> **${error.message}**`,
 								color: 0xcf1d32,
 								author: {
 									name: client.user.username,
@@ -445,7 +471,7 @@ client.on('interactionCreate', async (interaction) => {
 					if (player.queue.length !== 0) {
 						formattedQueue += `:notepad_spiral: **Current queue [${player.queue.length}]:**\n`;
 						for(let i = 0; i < player.queue.length; i++) {
-							formattedQueue += `**[${i}]** [${player.queue[i].title.slice(0, 75)} [${player.queue[i].duration}]](${player.queue[i].url}) by **${player.queue[i].author.slice(0, 45)}**\n`;
+							formattedQueue += `**[${i + 1}]** [${player.queue[i].title.slice(0, 75)} [${player.queue[i].duration}]](${player.queue[i].url}) by **${player.queue[i].author.slice(0, 45)}**\n`;
 						}
 					}
 
@@ -472,10 +498,15 @@ client.on('interactionCreate', async (interaction) => {
 					console.log(error);
 					interaction.reply({
 						embeds: [
-							new MessageEmbed()
-								.setDescription(`**${error.message}**`)
-								.setColor(0xcf1d32)
-								.setAuthor(client.user.username, client.user.displayAvatarURL()),
+							{
+								title: 'Failed!',
+								description: `<:cross:537885611865145367> **${error.message}**`,
+								color: 0xcf1d32,
+								author: {
+									name: client.user.username,
+									iconURL: client.user.displayAvatarURL(),
+								},
+							},
 						],
 					});
 				}
@@ -488,7 +519,7 @@ client.on('interactionCreate', async (interaction) => {
 					embeds: [
 						{
 							title: 'Failed!',
-							description: 'This command isn\'t implemented yet.',
+							description: '<:cross:537885611865145367> This command isn\'t implemented yet.',
 							color: 0xcf1d32,
 							author: {
 								name: client.user.username,
@@ -513,7 +544,7 @@ client.on('interactionCreate', async (interaction) => {
 					interaction.editReply({
 						embeds: [
 							{
-								title: position === 0 ? 'Now playing!' : `Video has been added to the queue! (#${position})`,
+								title: '<:check:537885340304932875> ' + (position === 0 ? 'Now playing!' : `Video has been added to the queue! (#${position})`),
 								description: `[${results[0].title} [${results[0].duration}]](${results[0].url}) by **${results[0].author.name}**`,
 								thumbnail: {
 									url: results[0].bestThumbnail.url,
@@ -530,7 +561,7 @@ client.on('interactionCreate', async (interaction) => {
 					interaction.editReply({
 						embeds: [
 							{
-								description: `**${error.message}**`,
+								description: `<:cross:537885611865145367> **${error.message}**`,
 								color: 0xcf1d32,
 								author: {
 									name: client.user.username,
@@ -549,7 +580,7 @@ client.on('interactionCreate', async (interaction) => {
 					embeds: [
 						{
 							title: 'Failed!',
-							description: 'This command isn\'t implemented yet.',
+							description: '<:cross:537885611865145367> This command isn\'t implemented yet.',
 							color: 0xcf1d32,
 							author: {
 								name: client.user.username,
