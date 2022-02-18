@@ -1,7 +1,7 @@
 require('dotenv').config();
 require('./array.utils');
 const { Client } = require('discord.js');
-const { entersState, joinVoiceChannel, createAudioPlayer, NoSubscriberBehavior, createAudioResource, VoiceConnectionStatus } = require('@discordjs/voice');
+const { entersState, joinVoiceChannel, createAudioPlayer, NoSubscriberBehavior, createAudioResource, VoiceConnectionStatus, AudioPlayerStatus } = require('@discordjs/voice');
 const search = require('ytsr');
 const download = require('youtube-dl-exec').exec;
 
@@ -540,6 +540,66 @@ client.on('interactionCreate', async (interaction) => {
 							},
 						],
 					});
+					break;
+				}
+
+				case 'pause': {
+					checkConnection(interaction);
+					const player = players[interaction.guild.id];
+
+					if (player.nowPlaying === null) {
+						throw new Error('PEBKAC:Nothing is currently playing!');
+					}
+
+					if (player.player.state.status === AudioPlayerStatus.Paused) {
+						throw new Error('PEBKAC:The video is already paused!');
+					}
+
+					if (player.player.pause()) {
+						interaction.editReply({
+							embeds: [
+								{
+									description: '<:check:537885340304932875> **Paused the video!**',
+									color: 0x249e43,
+									author: {
+										name: client.user.username,
+										iconURL: client.user.displayAvatarURL(),
+									},
+								},
+							],
+						});
+					} else throw new Error('PEBKAC:Failed to pause the video!');
+
+					break;
+				}
+
+				case 'resume': {
+					checkConnection(interaction);
+					const player = players[interaction.guild.id];
+
+					if (player.nowPlaying === null) {
+						throw new Error('PEBKAC:Nothing is currently playing!');
+					}
+
+					if (player.player.state.status !== AudioPlayerStatus.Paused) {
+						throw new Error('PEBKAC:The video isn\'t paused!');
+					}
+
+					if (player.player.unpause()) {
+						interaction.editReply({
+							embeds: [
+								{
+									description: '<:check:537885340304932875> **Resumed the video!**',
+									color: 0x249e43,
+									author: {
+										name: client.user.username,
+										iconURL: client.user.displayAvatarURL(),
+									},
+								},
+							],
+						});
+					} else throw new Error('PEBKAC:Failed to resume the video!');
+
 					break;
 				}
 
