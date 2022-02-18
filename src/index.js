@@ -208,10 +208,13 @@ const addToQueue = async (video, guildId) => {
  */
 
 const findVideos = async (title, limit) => {
-	const url = (await search.getFilters(title)).get('Type').get('Video').url;
+	let url = title.trim();
+	if (!title.startsWith('https://') && !title.startsWith('http://')) {
+		url = (await search.getFilters(title)).get('Type').get('Video').url;
 
-	if (!url) {
-		throw new Error('PEBKAC:Video could not be found.');
+		if (!url) {
+			throw new Error('PEBKAC:Video could not be found.');
+		}
 	}
 
 	const results = await search(url, { limit: limit });
@@ -520,6 +523,7 @@ client.on('interactionCreate', async (interaction) => {
 					await connectToChannel(interaction);
 
 					const results = await findVideos(interaction.values[0]);
+					console.log(interaction.values);
 					const position = await addToQueue(results[0], interaction.guild.id);
 
 					responseCustomFormatting = true;
