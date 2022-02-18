@@ -274,7 +274,7 @@ client.on('interactionCreate', async (interaction) => {
 					interaction.editReply({
 						embeds: [
 							{
-								title: '<:check:537885340304932875> ' + (position === 0 ? 'Now playing!' : `Video has been added to the queue! (#${position})`),
+								title: position === 0 ? 'Now playing!' : `<:check:537885340304932875> Video has been added to the queue! (#${position})`,
 								description: `[${results[0].title} [${results[0].duration}]](${results[0].url}) by **${results[0].author.name}**`,
 								thumbnail: {
 									url: results[0].bestThumbnail.url,
@@ -549,7 +549,7 @@ client.on('interactionCreate', async (interaction) => {
 					interaction.editReply({
 						embeds: [
 							{
-								title: '<:check:537885340304932875> ' + (position === 0 ? 'Now playing!' : `Video has been added to the queue! (#${position})`),
+								title: position === 0 ? 'Now playing!' : `<:check:537885340304932875> Video has been added to the queue! (#${position})`,
 								description: `[${results[0].title} [${results[0].duration}]](${results[0].url}) by **${results[0].author.name}**`,
 								thumbnail: {
 									url: results[0].bestThumbnail.url,
