@@ -240,7 +240,7 @@ const play = async (guildId) => {
 	const resource = createAudioResource(stream.stdout);
 
 	resource.playStream.on('end', () => {
-		if (players[guildId].loopType === 1) players[guildId].queue.splice(0, 0, [players[guildId].nowPlaying]);
+		if (players[guildId].loopType === 1) players[guildId].queue.splice(0, 0, players[guildId].nowPlaying);
 		else if (players[guildId].loopType === 2) players[guildId].queue.push(players[guildId].nowPlaying);
 
 		players[guildId].nowPlaying = null;
@@ -393,7 +393,7 @@ client.on('interactionCreate', async (interaction) => {
 					let formattedQueue = '';
 
 					if (player.nowPlaying !== null) {
-						formattedQueue += `:play_pause: **Currently playing:**\n**[0]** [${player.nowPlaying.title.slice(0, 75)} [${player.nowPlaying.duration}]](${player.nowPlaying.url}) by **${player.nowPlaying.author.slice(0, 45)}**\n\n`;
+						formattedQueue += `:play_pause: **Currently playing${player.loopType === 0 ? '' : ` [loop: ${player.loopType === 1 ? 'video' : 'queue'}]`}:**\n**[0]** [${player.nowPlaying.title.slice(0, 75)} [${player.nowPlaying.duration}]](${player.nowPlaying.url}) by **${player.nowPlaying.author.slice(0, 45)}**\n\n`;
 					}
 
 					if (player.queue.length !== 0) {
