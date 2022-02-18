@@ -312,7 +312,7 @@ client.on('interactionCreate', async (interaction) => {
 						throw new Error('PEBKAC:Invalid index value!');
 					}
 
-					if (index === null) {
+					if (index === null || index === 0) {
 						if (players[interaction.guild.id].queue.length === 0 && players[interaction.guild.id].nowPlaying === null) {
 							throw new Error('PEBKAC:Nothing is currently playing!');
 						} else {
@@ -338,10 +338,10 @@ client.on('interactionCreate', async (interaction) => {
 						const queue = players[interaction.guild.id].queue;
 						if (queue.length === 0) {
 							throw new Error('PEBKAC:The queue is empty!');
-						} else if (queue.length <= index || index < 0) {
+						} else if (queue.length < index || index < 0) {
 							throw new Error('PEBKAC:Invalid index!');
 						} else {
-							const removed = queue.splice(index, 1)[0];
+							const removed = queue.splice(index - 1, 1)[0];
 							interaction.editReply({
 								embeds: [
 									{
@@ -367,7 +367,7 @@ client.on('interactionCreate', async (interaction) => {
 					let formattedQueue = '';
 
 					if (player.nowPlaying !== null) {
-						formattedQueue += `:play_pause: **Currently playing:**\n[${player.nowPlaying.title.slice(0, 75)} [${player.nowPlaying.duration}]](${player.nowPlaying.url}) by **${player.nowPlaying.author.slice(0, 45)}**\n\n`;
+						formattedQueue += `:play_pause: **Currently playing:**\n**[0]** [${player.nowPlaying.title.slice(0, 75)} [${player.nowPlaying.duration}]](${player.nowPlaying.url}) by **${player.nowPlaying.author.slice(0, 45)}**\n\n`;
 					}
 
 					if (player.queue.length !== 0) {
@@ -397,6 +397,31 @@ client.on('interactionCreate', async (interaction) => {
 						],
 					});
 
+					break;
+				}
+
+				case 'clear': {
+					checkConnection(interaction);
+					const player = players[interaction.guild.id];
+
+					if (player.queue.length === 0) {
+						throw new Error('PEBKAC:The queue is empty!');
+					} else {
+						player.queue = [];
+
+						interaction.editReply({
+							embeds: [
+								{
+									description: '<:check:537885340304932875> **Cleared the queue!**',
+									color: 0x249e43,
+									author: {
+										name: client.user.username,
+										iconURL: client.user.displayAvatarURL(),
+									},
+								},
+							],
+						});
+					}
 					break;
 				}
 
