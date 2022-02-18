@@ -522,6 +522,27 @@ client.on('interactionCreate', async (interaction) => {
 					break;
 				}
 
+				case 'leave': {
+					checkConnection(interaction);
+					players[interaction.guild.id].resource.playStream.destroy();
+					players[interaction.guild.id].connection.destroy();
+					delete players[interaction.guild.id];
+
+					interaction.editReply({
+						embeds: [
+							{
+								description: '<:check:537885340304932875> **Successfully left the voice channel!**',
+								color: 0x249e43,
+								author: {
+									name: client.user.username,
+									iconURL: client.user.displayAvatarURL(),
+								},
+							},
+						],
+					});
+					break;
+				}
+
 				default: {
 					interaction.editReply({
 						embeds: [
