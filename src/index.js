@@ -96,7 +96,8 @@ const players = {};
 
 const connectToChannel = async (interaction) => {
 	if(!interaction.member.voice.channel) {
-		throw new Error('You\'re not connected to any voice channel on this server.');
+		// Problem Exists Between Keyboard And Chair
+		throw new Error('PEBKAC:You\'re not connected to any voice channel on this server.');
 	}
 
 	if(!interaction.guild.me.voice.channel) {
@@ -134,7 +135,7 @@ const connectToChannel = async (interaction) => {
 			throw new Error('Failed to join the voice channel within 20 seconds. Please try again later.');
 		}
 	} else if(interaction.member.voice.channelId !== interaction.guild.me.voice.channelId) {
-		throw new Error(`You're not connected to <#${interaction.guild.me.voice.channelId}>`);
+		throw new Error(`PEBKAC:You're not connected to <#${interaction.guild.me.voice.channelId}>`);
 	}
 };
 
@@ -145,11 +146,11 @@ const connectToChannel = async (interaction) => {
 
 const checkConnection = (interaction) => {
 	if(!interaction.guild.me.voice.channel) {
-		throw new Error('I\'m not connected to any voice channel on this server.');
+		throw new Error('PEBKAC:I\'m not connected to any voice channel on this server.');
 	}
 
 	if(interaction.member.voice.channelId !== interaction.guild.me.voice.channelId) {
-		throw new Error(`You're not connected to <#${interaction.guild.me.voice.channelId}>`);
+		throw new Error(`PEBKAC:You're not connected to <#${interaction.guild.me.voice.channelId}>`);
 	}
 };
 
@@ -187,13 +188,13 @@ const findVideos = async (title, limit) => {
 	const url = (await search.getFilters(title)).get('Type').get('Video').url;
 
 	if(!url) {
-		throw new Error('Video could not be found.');
+		throw new Error('PEBKAC:Video could not be found.');
 	}
 
 	const results = await search(url, { limit: limit });
 
 	if(results.items.length === 0) {
-		throw new Error('Video could not be found.');
+		throw new Error('PEBKAC:Video could not be found.');
 	}
 
 	return results.items;
@@ -261,6 +262,9 @@ client.on('interactionCreate', async (interaction) => {
 						],
 					});
 				} catch(error) {
+					if (!error.message || !error.message.startsWith('PEBKAC:')) console.log(error);
+					else error.message = error.message.replace('PEBKAC:', '');
+
 					interaction.editReply({
 						embeds: [
 							{
@@ -279,7 +283,7 @@ client.on('interactionCreate', async (interaction) => {
 			}
 
 			case 'search': {
-				interaction.deferReply();
+				await interaction.deferReply();
 
 				try {
 					await connectToChannel(interaction);
@@ -314,8 +318,10 @@ client.on('interactionCreate', async (interaction) => {
 						ephemeral: true,
 					});
 				} catch(error) {
-					console.log(error);
-					interaction.reply({
+					if (!error.message || !error.message.startsWith('PEBKAC:')) console.log(error);
+					else error.message = error.message.replace('PEBKAC:', '');
+
+					interaction.editReply({
 						embeds: [
 							{
 								title: 'Failed!',
@@ -436,10 +442,10 @@ client.on('interactionCreate', async (interaction) => {
 							});
 						}
 					}
-
-
 				} catch(error) {
-					console.log(error);
+					if (!error.message || !error.message.startsWith('PEBKAC:')) console.log(error);
+					else error.message = error.message.replace('PEBKAC:', '');
+
 					interaction.reply({
 						embeds: [
 							{
@@ -495,7 +501,9 @@ client.on('interactionCreate', async (interaction) => {
 						],
 					});
 				} catch(error) {
-					console.log(error);
+					if (!error.message || !error.message.startsWith('PEBKAC:')) console.log(error);
+					else error.message = error.message.replace('PEBKAC:', '');
+
 					interaction.reply({
 						embeds: [
 							{
@@ -558,6 +566,9 @@ client.on('interactionCreate', async (interaction) => {
 						],
 					});
 				} catch(error) {
+					if (!error.message || !error.message.startsWith('PEBKAC:')) console.log(error);
+					else error.message = error.message.replace('PEBKAC:', '');
+
 					interaction.editReply({
 						embeds: [
 							{
