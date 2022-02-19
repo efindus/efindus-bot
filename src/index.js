@@ -368,7 +368,7 @@ client.on('interactionCreate', async (interaction) => {
 					let formattedQueue = '';
 
 					if (player.nowPlaying !== null) {
-						formattedQueue += `:play_pause: **Currently playing${player.loopType === 0 ? '' : ` [loop: ${player.loopType === 1 ? 'video' : 'queue'}]`}:**\n**[0]** [${player.nowPlaying.title.slice(0, 75)} [${Math.floor(player.player.state.playbackDuration / 1000 / 60 / 60) >= 1 ? `${Math.floor(player.player.state.playbackDuration / 1000 / 60 / 60)}:` : ''}${Math.floor(player.player.state.playbackDuration / 1000 / 60) || '0'}:${`${Math.floor(player.player.state.playbackDuration / 1000) || '00'}`.padStart(2, '0')}/${player.nowPlaying.duration}]](${player.nowPlaying.url}) by **${player.nowPlaying.author.slice(0, 45)}**\n\n`;
+						formattedQueue += `:play_pause: **Currently playing${player.loopType === 0 ? '' : ` [loop: ${player.loopType === 1 ? 'video' : 'queue'}]`}:**\n**[0]** [${player.nowPlaying.title.slice(0, 75)} [${Math.floor(player.player.state.playbackDuration / 1000 / 60 / 60) >= 1 ? `${Math.floor(player.player.state.playbackDuration / 1000 / 60 / 60)}:` : ''}${Math.floor(player.player.state.playbackDuration / 1000 / 60) || '0'}:${`${Math.floor(player.player.state.playbackDuration / 1000 % 60) || '00'}`.padStart(2, '0')}/${player.nowPlaying.duration}]](${player.nowPlaying.url}) by **${player.nowPlaying.author.slice(0, 45)}**\n\n`;
 					}
 
 					if (player.queue.length !== 0) {
