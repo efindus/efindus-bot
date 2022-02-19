@@ -8,6 +8,13 @@ const ytpl = require('ytpl');
 const download = require('youtube-dl-exec').exec;
 
 // https://github.com/discordjs/voice/tree/main/examples/music-bot/src/music
+/*
+ * TODO:
+ * scrollable queue
+ * splay (playtop playskip and playindex in one command)
+ * add filters (some)
+ * maybe soundcloud support
+ */
 
 const client = new Client({
 	intents: [
