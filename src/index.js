@@ -225,7 +225,7 @@ const findVideos = async (query, limit) => {
 	let url = query.trim(), playlist = false;
 
 	const parsedUrl = URL.parse(url, true);
-	if (parsedUrl.host === 'youtu.be' || parsedUrl.host.endsWith('youtube.com')) {
+	if (parsedUrl.host && (parsedUrl.host === 'youtu.be' || parsedUrl.host.endsWith('youtube.com'))) {
 		if (parsedUrl.query['v'] || (parsedUrl.host === 'youtu.be' && (parsedUrl.query['v'] = parsedUrl.pathname.replace('/', '')))) {
 			url = `https://www.youtube.com/watch?v=${parsedUrl.query['v']}`;
 		} else {
@@ -608,7 +608,7 @@ client.on('interactionCreate', async (interaction) => {
 				case 'search': {
 					await connectToChannel(interaction);
 
-					const results = await findVideos(interaction.values[0]);
+					const results = (await findVideos(interaction.values[0])).items;
 					checkConnection(interaction);
 					const position = await addToQueue(results[0], interaction.guild.id);
 
@@ -643,7 +643,8 @@ client.on('interactionCreate', async (interaction) => {
 		}
 
 		if (responseProps.content) {
-			interaction.editReply({
+			await interaction.deleteReply();
+			interaction.followUp({
 				...responseProps,
 			});
 		} else {
