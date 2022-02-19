@@ -515,15 +515,19 @@ client.on('interactionCreate', async (interaction) => {
 				}
 
 				case 'delayautoleave': {
-					checkConnection(interaction);
 					const player = players[interaction.guild.id];
 
+					if (!player) {
+						checkConnection(interaction);
+					}
+
 					if (player.autoleaveTimestamp === null) {
+						checkConnection(interaction);
 						throw new Error('PEBKAC:I\'m not currently autoleaving!');
 					}
 
 					if (player.delayedAutoleave) {
-						throw new Error('PEBKAC:Autoleave is already delayed!');
+						throw new Error('PEBKAC:Autoleave was already delayed!');
 					}
 
 					player.autoleaveTimestamp += 5 * 60 * 1000;
@@ -649,7 +653,6 @@ client.on('voiceStateUpdate', async (oldState, newState) => {
 			player.delayedAutoleave = false;
 			player.autoleaveTimestamp = Date.now() + 29 * 1000;
 			const autoleave = async () => {
-				console.log('Trying to autoleave...');
 				const player = players[oldState.guild.id];
 				if (!player) return;
 				if ((await client.channels.fetch(player.channelId)).members.size !== 1) {
@@ -658,7 +661,6 @@ client.on('voiceStateUpdate', async (oldState, newState) => {
 					return;
 				}
 				if (player.autoleaveTimestamp > Date.now()) {
-					console.log('Was delayed!');
 					setTimeout(autoleave, player.autoleaveTimestamp - Date.now() + 500);
 				} else {
 					leave(oldState);
