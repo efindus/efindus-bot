@@ -3,6 +3,8 @@ require('./array.utils');
 const { Client } = require('discord.js');
 const { entersState, joinVoiceChannel, createAudioPlayer, NoSubscriberBehavior, createAudioResource, VoiceConnectionStatus, AudioPlayerStatus } = require('@discordjs/voice');
 const search = require('ytsr');
+const URL = require('url');
+const ytpl = require('ytpl');
 const download = require('youtube-dl-exec').exec;
 
 // https://github.com/discordjs/voice/tree/main/examples/music-bot/src/music
@@ -208,29 +210,58 @@ const addToQueue = async (video, guildId) => {
 };
 
 /**
+ * @typedef FindVideosReturns
+ * @property {boolean} isPlaylist
+ * @property {import("ytsr").Item[] | import("ytpl").Result} items
+ */
+
+/**
  * Find videos.
  * @param {string} title - Video's title.
  * @param {number} limit - Number of videos to find.
- * @returns {import("ytsr").Item[]} Videos.
+ * @returns {Promise<FindVideosReturns>} Videos.
  */
+const findVideos = async (query, limit) => {
+	let url = query.trim(), playlist = false;
 
-const findVideos = async (title, limit) => {
-	let url = title.trim();
-	if (!title.startsWith('https://') && !title.startsWith('http://')) {
-		url = (await search.getFilters(title)).get('Type').get('Video').url;
+	const parsedUrl = URL.parse(url, true);
+	if (parsedUrl.host === 'youtu.be' || parsedUrl.host.endsWith('youtube.com')) {
+		if (parsedUrl.query['v'] || (parsedUrl.host === 'youtu.be' && (parsedUrl.query['v'] = parsedUrl.pathname.replace('/', '')))) {
+			url = `https://www.youtube.com/watch?v=${parsedUrl.query['v']}`;
+		} else {
+			playlist = true;
+		}
+	} else {
+		url = (await search.getFilters(url)).get('Type').get('Video').url;
 
 		if (!url) {
 			throw new Error('PEBKAC:Video could not be found.');
 		}
 	}
 
-	const results = await search(url, { limit: limit });
+	if (playlist && limit === 1) {
+		try {
+			const result = await ytpl(url, { limit: 200 });
 
-	if (results.items.length === 0) {
-		throw new Error('PEBKAC:Video could not be found.');
+			return {
+				items: result,
+				isPlaylist: true,
+			};
+		} catch (error) {
+			throw new Error('PEBKAC:Unknown playlist!');
+		}
+	} else {
+		const results = await search(url, { limit: limit });
+
+		if (results.items.length === 0) {
+			throw new Error('PEBKAC:Video could not be found.');
+		}
+
+		return {
+			items: results.items,
+			isPlaylist: false,
+		};
 	}
-
-	return results.items;
 };
 
 const play = async (guildId) => {
@@ -240,6 +271,7 @@ const play = async (guildId) => {
 
 	players[guildId].nowPlaying = players[guildId].queue.shift();
 
+	// FIXME: When video has multiple audio tracks it selects some non original one (for now that's only a problem when watching mrbeast's videos)
 	const stream = download(players[guildId].nowPlaying.url, {
 		o: '-',
 		q: '',
@@ -288,16 +320,33 @@ client.on('interactionCreate', async (interaction) => {
 
 					const results = await findVideos(interaction.options.getString('query'), 1);
 					checkConnection(interaction);
-					const position = await addToQueue(results[0], interaction.guild.id);
+					if (results.isPlaylist) {
+						const position = await addToQueue(results.items.items[0], interaction.guild.id);
+						results.items.items.shift();
+						for (const item of results.items.items) {
+							await addToQueue(item, interaction.guild.id);
+						}
 
-					responseCustomFormatting = true;
-					responseTitle = position === 0 ? 'Now playing!' : `<:check:537885340304932875> Video has been added to the queue! (#${position})`;
-					responseMessage = `[${results[0].title} [${results[0].duration}]](${results[0].url}) by **${results[0].author.name}**`;
-					responseProps = {
-						thumbnail: {
-							url: results[0].bestThumbnail.url,
-						},
-					};
+						responseCustomFormatting = true;
+						responseTitle = `<:check:537885340304932875> Playlist has been added to the queue [${results.items.estimatedItemCount} video${results.items.estimatedItemCount < 2 ? '' : 's'}]! (#${position})`;
+						responseMessage = `[${results.items.title}](${results.items.url}) by **${results.items.author.name}**`;
+						responseProps = {
+							thumbnail: {
+								url: results.items.bestThumbnail.url,
+							},
+						};
+					} else {
+						const position = await addToQueue(results.items[0], interaction.guild.id);
+
+						responseCustomFormatting = true;
+						responseTitle = position === 0 ? 'Now playing!' : `<:check:537885340304932875> Video has been added to the queue! (#${position})`;
+						responseMessage = `[${results.items[0].title} [${results.items[0].duration}]](${results.items[0].url}) by **${results.items[0].author.name}**`;
+						responseProps = {
+							thumbnail: {
+								url: results.items[0].bestThumbnail.url,
+							},
+						};
+					}
 
 					break;
 				}
@@ -305,7 +354,7 @@ client.on('interactionCreate', async (interaction) => {
 				case 'search': {
 					await connectToChannel(interaction);
 
-					const results = await findVideos(interaction.options.getString('query'), 10);
+					const results = (await findVideos(interaction.options.getString('query'), 10)).items;
 
 					const videos = [];
 
