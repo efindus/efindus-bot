@@ -382,7 +382,7 @@ client.on('interactionCreate', async (interaction) => {
 						formattedQueue = formattedQueue.slice(0, 1997);
 						formattedQueue += '...';
 					} else if (formattedQueue.length === 0) {
-						formattedQueue = '<:cross:537885611865145367> **Nothing is currently playing!**';
+						throw new Error('PEBKAC:Nothing is currently playing!');
 					}
 
 					responseCustomFormatting = true;
