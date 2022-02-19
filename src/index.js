@@ -104,6 +104,9 @@ client.on('ready', () => {
 		}, {
 			name: 'shuffle',
 			description: 'Shuffle the queue.',
+		}, {
+			name: 'delayautoleave',
+			description: 'Add 5 minutes to the autoleave timer. Only one-time use.',
 		},
 	]);
 
@@ -136,7 +139,6 @@ const connectToChannel = async (interaction) => {
 		players[interaction.guild.id] = {
 			nowPlaying: null,
 			queue: [],
-			paused: false,
 			loopType: 0, // 0 -> no loop; 1 -> single video loop; 2 -> queue loop;
 			player: createAudioPlayer({
 				behaviors: {
@@ -144,6 +146,11 @@ const connectToChannel = async (interaction) => {
 				},
 			}),
 			connection,
+			channelId: interaction.member.voice.channelId,
+			leaving: false,
+			autoleaveTimeout: null,
+			autoleaveTimestamp: null,
+			delayedAutoleave: false,
 		};
 
 		/* players[interaction.guild.id].player.on("error", (err) =>
@@ -258,6 +265,13 @@ const play = async (guildId) => {
 	players[guildId].player.play(resource);
 };
 
+const leave = (interaction) => {
+	players[interaction.guild.id].leaving = true;
+	players[interaction.guild.id]?.resource?.playStream?.destroy();
+	players[interaction.guild.id]?.connection?.destroy();
+	delete players[interaction.guild.id];
+};
+
 client.on('interactionCreate', async (interaction) => {
 	if (!interaction.guild) {
 		return;
@@ -273,6 +287,7 @@ client.on('interactionCreate', async (interaction) => {
 					await connectToChannel(interaction);
 
 					const results = await findVideos(interaction.options.getString('query'), 1);
+					checkConnection(interaction);
 					const position = await addToQueue(results[0], interaction.guild.id);
 
 					responseCustomFormatting = true;
@@ -455,9 +470,7 @@ client.on('interactionCreate', async (interaction) => {
 
 				case 'leave': {
 					checkConnection(interaction);
-					players[interaction.guild.id].resource.playStream.destroy();
-					players[interaction.guild.id].connection.destroy();
-					delete players[interaction.guild.id];
+					leave(interaction);
 
 					responseMessage = 'Successfully left the voice channel!';
 					break;
@@ -501,6 +514,26 @@ client.on('interactionCreate', async (interaction) => {
 					break;
 				}
 
+				case 'delayautoleave': {
+					checkConnection(interaction);
+					const player = players[interaction.guild.id];
+
+					if (player.autoleaveTimestamp === null) {
+						throw new Error('PEBKAC:I\'m not currently autoleaving!');
+					}
+
+					if (player.delayedAutoleave) {
+						throw new Error('PEBKAC:Autoleave is already delayed!');
+					}
+
+					player.autoleaveTimestamp += 5 * 60 * 1000;
+					player.delayedAutoleave = true;
+
+					responseMessage = 'I\'ll stay in the voice channel alone 5 minutes longer. (sad lonely bot noises)';
+
+					break;
+				}
+
 				default: {
 					interaction.editReply({
 						embeds: [
@@ -523,7 +556,7 @@ client.on('interactionCreate', async (interaction) => {
 					await connectToChannel(interaction);
 
 					const results = await findVideos(interaction.values[0]);
-					console.log(interaction.values);
+					checkConnection(interaction);
 					const position = await addToQueue(results[0], interaction.guild.id);
 
 					responseCustomFormatting = true;
@@ -592,6 +625,47 @@ client.on('interactionCreate', async (interaction) => {
 				},
 			],
 		});
+	}
+});
+
+client.on('voiceStateUpdate', async (oldState, newState) => {
+	if (oldState.id === client.user.id) {
+		if (newState.channelId) {
+			players[oldState.guild.id].channelId = newState.channelId;
+		} else {
+			if (players[oldState.guild.id] && !players[oldState.guild.id].leaving) {
+				leave(oldState);
+			}
+			return;
+		}
+	}
+
+	const player = players[oldState.guild.id];
+	if (!player) return;
+	if (player.channelId === (oldState.id === client.user.id ? newState.channelId : oldState.channelId)) {
+		if ((await client.channels.fetch(player.channelId)).members.size === 1) {
+			if (player.autoleaveTimeout !== null) clearTimeout(player.autoleaveTimeout);
+
+			player.delayedAutoleave = false;
+			player.autoleaveTimestamp = Date.now() + 29 * 1000;
+			const autoleave = async () => {
+				console.log('Trying to autoleave...');
+				const player = players[oldState.guild.id];
+				if (!player) return;
+				if ((await client.channels.fetch(player.channelId)).members.size !== 1) {
+					player.autoleaveTimeout = null;
+					player.autoleaveTimestamp = null;
+					return;
+				}
+				if (player.autoleaveTimestamp > Date.now()) {
+					console.log('Was delayed!');
+					setTimeout(autoleave, player.autoleaveTimestamp - Date.now() + 500);
+				} else {
+					leave(oldState);
+				}
+			};
+			player.autoleaveTimeout = setTimeout(autoleave, 30 * 1000);
+		}
 	}
 });
 
