@@ -12,8 +12,10 @@ const download = require('youtube-dl-exec').exec;
  * TODO:
  * scrollable queue
  * splay (playtop playskip and playindex in one command)
+ * skip X songs
  * add filters (some)
  * maybe soundcloud support
+ * (reminder for the future) bump version
  */
 
 const client = new Client({
@@ -119,6 +121,11 @@ client.on('ready', () => {
 		},
 	]);
 
+	client.user.setActivity({
+		type: 'PLAYING',
+		name: `with new ${require('../package.json').version} update!`,
+	});
+
 	console.log(`\x1b[37m\x1b[42mREADY\x1b[0m ${client.user.tag} is ready!`);
 });
 
@@ -158,7 +165,6 @@ const connectToChannel = async (interaction) => {
 			channelId: interaction.member.voice.channelId,
 			leaving: false,
 			autoleaveTimeout: null,
-			autoleaveTimestamp: null,
 			delayedAutoleave: false,
 		};
 
@@ -577,7 +583,7 @@ client.on('interactionCreate', async (interaction) => {
 						checkConnection(interaction);
 					}
 
-					if (player.autoleaveTimestamp === null) {
+					if (player.autoleaveTimeout === null) {
 						checkConnection(interaction);
 						throw new Error('PEBKAC:I\'m not currently autoleaving!');
 					}
@@ -586,7 +592,6 @@ client.on('interactionCreate', async (interaction) => {
 						throw new Error('PEBKAC:Autoleave was already delayed!');
 					}
 
-					player.autoleaveTimestamp += 5 * 60 * 1000;
 					player.delayedAutoleave = true;
 
 					responseMessage = 'I\'ll stay in the voice channel alone 5 minutes longer. (sad lonely bot noises)';
@@ -708,17 +713,15 @@ client.on('voiceStateUpdate', async (oldState, newState) => {
 			if (player.autoleaveTimeout !== null) clearTimeout(player.autoleaveTimeout);
 
 			player.delayedAutoleave = false;
-			player.autoleaveTimestamp = Date.now() + 29 * 1000;
 			const autoleave = async () => {
 				const player = players[oldState.guild.id];
 				if (!player) return;
 				if ((await client.channels.fetch(player.channelId)).members.size !== 1) {
 					player.autoleaveTimeout = null;
-					player.autoleaveTimestamp = null;
 					return;
 				}
-				if (player.autoleaveTimestamp > Date.now()) {
-					setTimeout(autoleave, player.autoleaveTimestamp - Date.now() + 500);
+				if (player.delayedAutoleave) {
+					setTimeout(autoleave, 5 * 60 * 1000);
 				} else {
 					leave(oldState);
 				}
