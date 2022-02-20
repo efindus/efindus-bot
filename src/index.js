@@ -708,7 +708,7 @@ client.on('voiceStateUpdate', async (oldState, newState) => {
 
 	const player = players[oldState.guild.id];
 	if (!player) return;
-	if (player.channelId === (oldState.id === client.user.id ? newState.channelId : oldState.channelId)) {
+	if (player.channelId === oldState.channelId || player.channelId === newState.channelId) {
 		if ((await client.channels.fetch(player.channelId)).members.size === 1) {
 			if (player.autoleaveTimeout !== null) clearTimeout(player.autoleaveTimeout);
 
