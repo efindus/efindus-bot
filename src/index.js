@@ -165,7 +165,7 @@ const connectToChannel = async (interaction) => {
 			channelId: interaction.member.voice.channelId,
 			leaving: false,
 			autoleaveTimeout: null,
-			delayedAutoleave: false,
+			delayedAutoleave: 0,
 		};
 
 		/* players[interaction.guild.id].player.on("error", (err) =>
@@ -588,11 +588,11 @@ client.on('interactionCreate', async (interaction) => {
 						throw new Error('PEBKAC:I\'m not currently autoleaving!');
 					}
 
-					if (player.delayedAutoleave) {
+					if (player.delayedAutoleave !== 0) {
 						throw new Error('PEBKAC:Autoleave was already delayed!');
 					}
 
-					player.delayedAutoleave = true;
+					player.delayedAutoleave = 1;
 
 					responseMessage = 'I\'ll stay in the voice channel alone 5 minutes longer. (sad lonely bot noises)';
 
@@ -712,7 +712,7 @@ client.on('voiceStateUpdate', async (oldState, newState) => {
 		if ((await client.channels.fetch(player.channelId)).members.size === 1) {
 			if (player.autoleaveTimeout !== null) clearTimeout(player.autoleaveTimeout);
 
-			player.delayedAutoleave = false;
+			player.delayedAutoleave = 0;
 			const autoleave = async () => {
 				const player = players[oldState.guild.id];
 				if (!player) return;
@@ -720,7 +720,8 @@ client.on('voiceStateUpdate', async (oldState, newState) => {
 					player.autoleaveTimeout = null;
 					return;
 				}
-				if (player.delayedAutoleave) {
+				if (player.delayedAutoleave === 1) {
+					player.delayedAutoleave = 2;
 					setTimeout(autoleave, 5 * 60 * 1000);
 				} else {
 					leave(oldState);
