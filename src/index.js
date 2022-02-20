@@ -716,10 +716,6 @@ client.on('voiceStateUpdate', async (oldState, newState) => {
 			const autoleave = async () => {
 				const player = players[oldState.guild.id];
 				if (!player) return;
-				if ((await client.channels.fetch(player.channelId)).members.size !== 1) {
-					player.autoleaveTimeout = null;
-					return;
-				}
 				if (player.delayedAutoleave === 1) {
 					player.delayedAutoleave = 2;
 					setTimeout(autoleave, 5 * 60 * 1000);
@@ -728,6 +724,9 @@ client.on('voiceStateUpdate', async (oldState, newState) => {
 				}
 			};
 			player.autoleaveTimeout = setTimeout(autoleave, 30 * 1000);
+		} else if (player.autoleaveTimeout !== null) {
+			clearTimeout(player.autoleaveTimeout);
+			player.autoleaveTimeout = null;
 		}
 	}
 });
