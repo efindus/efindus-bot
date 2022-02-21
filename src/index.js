@@ -351,7 +351,7 @@ client.on('interactionCreate', async (interaction) => {
 						}
 
 						responseCustomFormatting = true;
-						responseTitle = `<:check:537885340304932875> Playlist has been added to the queue [${results.items.estimatedItemCount} video${results.items.estimatedItemCount < 2 ? '' : 's'}]! (#${position})`;
+						responseTitle = `<:check:537885340304932875> Playlist has been added to the queue [${results.items.items.length + 1} video${results.items.items.length + 1 < 2 ? '' : 's'}]! (#${position})`;
 						responseMessage = `[${results.items.title}](${results.items.url}) by **${results.items.author.name}**`;
 						responseProps = {
 							thumbnail: {
