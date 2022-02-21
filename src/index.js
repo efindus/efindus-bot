@@ -1,9 +1,9 @@
 require('dotenv').config();
-require('./array.utils');
+require('./utils/array');
 const { Client } = require('discord.js');
 const { entersState, joinVoiceChannel, createAudioPlayer, NoSubscriberBehavior, createAudioResource, VoiceConnectionStatus, AudioPlayerStatus } = require('@discordjs/voice');
-const search = require('ytsr');
 const URL = require('url');
+const search = require('ytsr');
 const ytpl = require('ytpl');
 const download = require('youtube-dl-exec').exec;
 
@@ -12,7 +12,6 @@ const download = require('youtube-dl-exec').exec;
  * TODO:
  * scrollable queue
  * splay (playtop playskip and playindex in one command)
- * skip X songs
  * add filters (some)
  * maybe soundcloud support
  * (reminder for the future) bump version
@@ -50,6 +49,11 @@ client.on('ready', () => {
 					name: 'position',
 					type: 'INTEGER',
 					description: 'Video\'s position in the queue.',
+					required: false,
+				}, {
+					name: 'amount',
+					type: 'INTEGER',
+					description: 'Amount of videos to remove.',
 					required: false,
 				},
 			],
@@ -168,10 +172,9 @@ const connectToChannel = async (interaction) => {
 			delayedAutoleave: 0,
 		};
 
-		/* players[interaction.guild.id].player.on("error", (err) =>
-		{
-			console.log(err);
-		}) */
+		// players[interaction.guild.id].player.on('error', error => {
+		// 	console.log(error);
+		// });
 
 		try {
 			await entersState(connection, VoiceConnectionStatus.Ready, 20000);
@@ -199,6 +202,30 @@ const checkConnection = (interaction) => {
 	}
 };
 
+const sanitizeQuery = async (query) => {
+	let url = query.trim(), playlist = false;
+
+	const parsedUrl = URL.parse(url, true);
+	if (parsedUrl.host && (parsedUrl.host === 'youtu.be' || parsedUrl.host.endsWith('youtube.com'))) {
+		if (parsedUrl.query['v'] || (parsedUrl.host === 'youtu.be' && (parsedUrl.query['v'] = parsedUrl.pathname.replace('/', '')))) {
+			url = `https://www.youtube.com/watch?v=${parsedUrl.query['v']}`;
+		} else {
+			playlist = true;
+		}
+	} else {
+		url = (await search.getFilters(url)).get('Type').get('Video').url;
+
+		if (!url) {
+			throw new Error('PEBKAC:Video could not be found.');
+		}
+	}
+
+	return {
+		url,
+		playlist,
+	};
+};
+
 /**
  * Add a video to the queue.
  * @param {import("ytsr").Item} video - The video.
@@ -207,11 +234,10 @@ const checkConnection = (interaction) => {
 
 const addToQueue = async (video, guildId) => {
 	players[guildId].queue.push({
-		url: video.url,
+		url: (await sanitizeQuery(video.url)).url,
 		title: video.title,
 		author: video.author.name,
 		duration: video.duration,
-		resource: null,
 	});
 
 	if (!players[guildId].nowPlaying) {
@@ -235,22 +261,7 @@ const addToQueue = async (video, guildId) => {
  * @returns {Promise<FindVideosReturns>} Videos.
  */
 const findVideos = async (query, limit) => {
-	let url = query.trim(), playlist = false;
-
-	const parsedUrl = URL.parse(url, true);
-	if (parsedUrl.host && (parsedUrl.host === 'youtu.be' || parsedUrl.host.endsWith('youtube.com'))) {
-		if (parsedUrl.query['v'] || (parsedUrl.host === 'youtu.be' && (parsedUrl.query['v'] = parsedUrl.pathname.replace('/', '')))) {
-			url = `https://www.youtube.com/watch?v=${parsedUrl.query['v']}`;
-		} else {
-			playlist = true;
-		}
-	} else {
-		url = (await search.getFilters(url)).get('Type').get('Video').url;
-
-		if (!url) {
-			throw new Error('PEBKAC:Video could not be found.');
-		}
-	}
+	const { url, playlist } = await sanitizeQuery(query);
 
 	if (playlist && limit === 1) {
 		try {
@@ -306,14 +317,13 @@ const play = async (guildId) => {
 		console.log(err);
 	});
 
-	players[guildId].resource = resource;
 	players[guildId].player.play(resource);
 };
 
 const leave = (interaction) => {
 	players[interaction.guild.id].leaving = true;
-	players[interaction.guild.id]?.resource?.playStream?.destroy();
-	players[interaction.guild.id]?.connection?.destroy();
+	players[interaction.guild.id].player?.stop();
+	players[interaction.guild.id].connection?.destroy();
 	delete players[interaction.guild.id];
 };
 
@@ -403,7 +413,7 @@ client.on('interactionCreate', async (interaction) => {
 				case 'skip': {
 					checkConnection(interaction);
 
-					let index = -1;
+					let index = -1, amount = 1;
 
 					try {
 						index = interaction.options.getInteger('position');
@@ -411,16 +421,25 @@ client.on('interactionCreate', async (interaction) => {
 						throw new Error('PEBKAC:Invalid index value!');
 					}
 
+					try {
+						amount = interaction.options.getInteger('amount');
+						if (amount === null) amount = 1;
+					} catch (error) {
+						throw new Error('PEBKAC:Invalid amount!');
+					}
+
 					if (index === null || index === 0) {
 						if (players[interaction.guild.id].queue.length === 0 && players[interaction.guild.id].nowPlaying === null) {
 							throw new Error('PEBKAC:Nothing is currently playing!');
 						} else {
-							players[interaction.guild.id].resource.playStream.destroy();
+							players[interaction.guild.id].player.stop();
 							players[interaction.guild.id].nowPlaying = null;
 
+							amount--;
+							if (amount > 0) players[interaction.guild.id].queue.splice(0, amount);
 							await play(interaction.guild.id);
 
-							responseMessage = 'Video has been skipped!';
+							responseMessage = amount < 1 ? 'Video has been skipped!' : `${amount + 1} videos have been skipped!`;
 						}
 					} else {
 						const queue = players[interaction.guild.id].queue;
@@ -429,9 +448,9 @@ client.on('interactionCreate', async (interaction) => {
 						} else if (queue.length < index || index < 0) {
 							throw new Error('PEBKAC:Invalid index!');
 						} else {
-							const removed = queue.splice(index - 1, 1)[0];
+							const removed = queue.splice(index - 1, amount)[0];
 							responseCustomFormatting = true;
-							responseMessage = `<:check:537885340304932875> [${removed.title.slice(0, 75)} [${removed.duration}]](${removed.url}) by **${removed.author.slice(0, 45)}** has been skipped!`;
+							responseMessage = `<:check:537885340304932875> [${removed.title.slice(0, 75)} [${removed.duration}]](${removed.url}) by **${removed.author.slice(0, 45)}** ${amount > 1 ? `and ${amount - 1} more videos have` : 'has'} been skipped!`;
 						}
 					}
 
@@ -696,7 +715,7 @@ client.on('interactionCreate', async (interaction) => {
 
 client.on('voiceStateUpdate', async (oldState, newState) => {
 	if (oldState.id === client.user.id) {
-		if (newState.channelId) {
+		if (newState.channelId && players[oldState.guild.id]) {
 			players[oldState.guild.id].channelId = newState.channelId;
 		} else {
 			if (players[oldState.guild.id] && !players[oldState.guild.id].leaving) {
