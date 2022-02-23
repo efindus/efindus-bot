@@ -1,10 +1,12 @@
 require('dotenv').config();
 require('./utils/array');
+const time = require('./utils/time');
+const parse = require('./utils/parse');
 const { Client } = require('discord.js');
 const { entersState, joinVoiceChannel, createAudioPlayer, NoSubscriberBehavior, createAudioResource, VoiceConnectionStatus, AudioPlayerStatus } = require('@discordjs/voice');
-const URL = require('url');
-const search = require('ytsr');
+const ytsr = require('ytsr');
 const ytpl = require('ytpl');
+const ytsearch = require('youtube-sr').default;
 const download = require('youtube-dl-exec').exec;
 
 // https://github.com/discordjs/voice/tree/main/examples/music-bot/src/music
@@ -14,6 +16,7 @@ const download = require('youtube-dl-exec').exec;
  * splay (playtop playskip and playindex in one command)
  * add filters (some)
  * maybe soundcloud support
+ * turn this into a full-fledged bot (make a command handler and split this into files (make the player a class and put commands in separate files automagically loaded by a command handler) cuz 768 line js kinda sux and maybe rename the thing into sth else idk ~~maybe the NeverFindusBoT~~ ask marximimus about that)
  * (reminder for the future) bump version
  */
 
@@ -191,7 +194,6 @@ const connectToChannel = async (interaction) => {
  * Check if user is connected to the channel.
  * @param {import("discord.js").Interaction} interaction - User's interaction.
  */
-
 const checkConnection = (interaction) => {
 	if (!interaction.guild.me.voice.channel || !players[interaction.guild.id]) {
 		throw new Error('PEBKAC:I\'m not connected to any voice channel on this server.');
@@ -202,18 +204,19 @@ const checkConnection = (interaction) => {
 	}
 };
 
+/**
+ * Parses user inputed query and determines type of entered data
+ * @param {string} query - Query to sanitize
+ * @returns Parsed url and info if the url is a playlist
+ */
 const sanitizeQuery = async (query) => {
 	let url = query.trim(), playlist = false;
 
-	const parsedUrl = URL.parse(url, true);
-	if (parsedUrl.host && (parsedUrl.host === 'youtu.be' || parsedUrl.host.endsWith('youtube.com'))) {
-		if (parsedUrl.query['v'] || (parsedUrl.host === 'youtu.be' && (parsedUrl.query['v'] = parsedUrl.pathname.replace('/', '')))) {
-			url = `https://www.youtube.com/watch?v=${parsedUrl.query['v']}`;
-		} else {
-			playlist = true;
-		}
-	} else {
-		url = (await search.getFilters(url)).get('Type').get('Video').url;
+	const videoID = parse.getVideoID(url);
+	if (videoID) url = parse.getVideoURL(videoID);
+	else if (url.startsWith('https://www.youtube.com/')) playlist = true;
+	else {
+		url = (await ytsr.getFilters(url)).get('Type').get('Video').url;
 
 		if (!url) {
 			throw new Error('PEBKAC:Video could not be found.');
@@ -228,13 +231,13 @@ const sanitizeQuery = async (query) => {
 
 /**
  * Add a video to the queue.
- * @param {import("ytsr").Item} video - The video.
+ * @param {import('./index').QueueVideo} video - The video.
  * @param {string} guildId - Guild's id.
  */
-
 const addToQueue = async (video, guildId) => {
+	// FIXME: Make queue hold id's instead of urls and then move sanitizeQuery function back into findVideos
 	players[guildId].queue.push({
-		url: (await sanitizeQuery(video.url)).url,
+		url: (await sanitizeQuery(parse.getVideoURL(video.id))).url,
 		title: video.title,
 		author: video.author.name,
 		duration: video.duration,
@@ -249,42 +252,29 @@ const addToQueue = async (video, guildId) => {
 };
 
 /**
- * @typedef FindVideosReturns
- * @property {boolean} isPlaylist
- * @property {import("ytsr").Item[] | import("ytpl").Result} items
- */
-
-/**
  * Find videos.
  * @param {string} title - Video's title.
  * @param {number} limit - Number of videos to find.
- * @returns {Promise<FindVideosReturns>} Videos.
+ * @returns {Promise<import('./index').SearchPlaylist | import('./index').QueueVideo | import('./index').QueueVideo[]>} Videos.
  */
 const findVideos = async (query, limit) => {
 	const { url, playlist } = await sanitizeQuery(query);
 
 	if (playlist && limit === 1) {
 		try {
-			const result = await ytpl(url, { limit: 200 });
-
-			return {
-				items: result,
-				isPlaylist: true,
-			};
+			return parse.getSearchPlaylist(await ytpl(url, { limit: 200 }));
 		} catch (error) {
 			throw new Error('PEBKAC:Unknown playlist!');
 		}
 	} else {
-		const results = await search(url, { limit: limit });
+		if (limit !== 1) {
+			const results = await ytsr(url, { limit: limit });
+			if (results.items.length === 0) throw new Error('PEBKAC:Video could not be found.');
 
-		if (results.items.length === 0) {
-			throw new Error('PEBKAC:Video could not be found.');
+			return results.items.map(item => parse.getQueueVideo(item));
+		} else {
+			return parse.getQueueVideo(await ytsearch.getVideo(url));
 		}
-
-		return {
-			items: results.items,
-			isPlaylist: false,
-		};
 	}
 };
 
@@ -343,30 +333,38 @@ client.on('interactionCreate', async (interaction) => {
 
 					const results = await findVideos(interaction.options.getString('query'), 1);
 					checkConnection(interaction);
-					if (results.isPlaylist) {
-						const position = await addToQueue(results.items.items[0], interaction.guild.id);
-						results.items.items.shift();
-						for (const item of results.items.items) {
-							await addToQueue(item, interaction.guild.id);
+					if (results.videos) {
+						/**
+						 * @type {import('./index').SearchPlaylist}
+						 */
+						const result = results;
+						const position = await addToQueue(result.videos[0], interaction.guild.id);
+						result.videos.shift();
+						for (const video of result.videos) {
+							await addToQueue(video, interaction.guild.id);
 						}
 
 						responseCustomFormatting = true;
-						responseTitle = `<:check:537885340304932875> Playlist has been added to the queue [${results.items.items.length + 1} video${results.items.items.length + 1 < 2 ? '' : 's'}]! (#${position})`;
-						responseMessage = `[${results.items.title}](${results.items.url}) by **${results.items.author.name}**`;
+						responseTitle = `<:check:537885340304932875> Playlist has been added to the queue [${result.videos.length + 1} video${result.videos.length + 1 < 2 ? '' : 's'}]! (#${position})`;
+						responseMessage = `[${result.title}](${parse.getPlaylistURL(result.id)}) by **${result.author}**`;
 						responseProps = {
 							thumbnail: {
-								url: results.items.bestThumbnail.url,
+								url: result.thumbnailURL,
 							},
 						};
 					} else {
-						const position = await addToQueue(results.items[0], interaction.guild.id);
+						/**
+						 * @type {import('./index').QueueVideo}
+						 */
+						const result = results;
+						const position = await addToQueue(result, interaction.guild.id);
 
 						responseCustomFormatting = true;
 						responseTitle = position === 0 ? 'Now playing!' : `<:check:537885340304932875> Video has been added to the queue! (#${position})`;
-						responseMessage = `[${results.items[0].title} [${results.items[0].duration}]](${results.items[0].url}) by **${results.items[0].author.name}**`;
+						responseMessage = `[${result.title} [${time.formatMS(result.duration)}]](${parse.getVideoURL(result.id)}) by **${result.author}**`;
 						responseProps = {
 							thumbnail: {
-								url: results.items[0].bestThumbnail.url,
+								url: parse.getVideoThubnailURL(result.id),
 							},
 						};
 					}
@@ -377,15 +375,18 @@ client.on('interactionCreate', async (interaction) => {
 				case 'search': {
 					await connectToChannel(interaction);
 
-					const results = (await findVideos(interaction.options.getString('query'), 10)).items;
+					/**
+					 * @type {import('./index').QueueVideo[]}
+					 */
+					const results = await findVideos(interaction.options.getString('query'), 10);
 
 					const videos = [];
 
 					results.forEach((video) => {
 						videos.push({
 							label: video.title,
-							description: video.author.name,
-							value: video.url,
+							description: video.author,
+							value: parse.getVideoURL(video.id),
 						});
 					});
 
@@ -439,6 +440,7 @@ client.on('interactionCreate', async (interaction) => {
 							if (amount > 0) players[interaction.guild.id].queue.splice(0, amount);
 							await play(interaction.guild.id);
 
+							// TODO: Show the skipped video like below
 							responseMessage = amount < 1 ? 'Video has been skipped!' : `${amount + 1} videos have been skipped!`;
 						}
 					} else {
@@ -458,13 +460,14 @@ client.on('interactionCreate', async (interaction) => {
 				}
 
 				case 'queue': {
+					// FIXME: Use methods from parse everywhere
 					checkConnection(interaction);
 					const player = players[interaction.guild.id];
 
 					let formattedQueue = '';
 
 					if (player.nowPlaying !== null) {
-						formattedQueue += `:play_pause: **Currently playing${player.loopType === 0 ? '' : ` [loop: ${player.loopType === 1 ? 'video' : 'queue'}]`}:**\n**[0]** [${player.nowPlaying.title.slice(0, 75)} [${Math.floor(player.player.state.playbackDuration / 1000 / 60 / 60) >= 1 ? `${Math.floor(player.player.state.playbackDuration / 1000 / 60 / 60)}:` : ''}${Math.floor(player.player.state.playbackDuration / 1000 / 60) || '0'}:${`${Math.floor(player.player.state.playbackDuration / 1000 % 60) || '00'}`.padStart(2, '0')}/${player.nowPlaying.duration}]](${player.nowPlaying.url}) by **${player.nowPlaying.author.slice(0, 45)}**\n\n`;
+						formattedQueue += `:play_pause: **Currently playing${player.loopType === 0 ? '' : ` [loop: ${player.loopType === 1 ? 'video' : 'queue'}]`}:**\n**[0]** [${player.nowPlaying.title.slice(0, 75)} [${time.formatMS(player.player.state.playbackDuration)}/${player.nowPlaying.duration}]](${player.nowPlaying.url}) by **${player.nowPlaying.author.slice(0, 45)}**\n\n`;
 					}
 
 					if (player.queue.length !== 0) {
@@ -639,16 +642,19 @@ client.on('interactionCreate', async (interaction) => {
 				case 'search': {
 					await connectToChannel(interaction);
 
-					const results = (await findVideos(interaction.values[0])).items;
+					/**
+					 * @type {import('./index').QueueVideo}
+					 */
+					const result = (await findVideos(interaction.values[0], 1));
 					checkConnection(interaction);
-					const position = await addToQueue(results[0], interaction.guild.id);
+					const position = await addToQueue(result, interaction.guild.id);
 
 					responseCustomFormatting = true;
 					responseTitle = position === 0 ? 'Now playing!' : `<:check:537885340304932875> Video has been added to the queue! (#${position})`;
-					responseMessage = `[${results[0].title} [${results[0].duration}]](${results[0].url}) by **${results[0].author.name}**`;
+					responseMessage = `[${result.title} [${time.formatMS(result.duration)}]](${parse.getVideoURL(result.id)}) by **${result.author}**`;
 					responseProps = {
 						thumbnail: {
-							url: results[0].bestThumbnail.url,
+							url: parse.getVideoThubnailURL(result.id),
 						},
 					};
 
