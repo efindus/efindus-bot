@@ -127,7 +127,7 @@ client.on('ready', () => {
 
 	client.user.setActivity({
 		type: 'PLAYING',
-		name: `with new ${require('../package.json').version} update!`,
+		name: 'with slash commands!',
 	});
 
 	console.log(`\x1b[37m\x1b[42mREADY\x1b[0m ${client.user.tag} is ready!`);
