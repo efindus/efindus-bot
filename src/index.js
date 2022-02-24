@@ -12,7 +12,7 @@ const download = require('youtube-dl-exec').exec;
 /*
  * TODO:
  * scrollable queue
- * splay (playtop playskip and playindex in one command)
+ * add volume
  * add filters (some)
  * maybe soundcloud support
  * turn this into a full-fledged bot (make a command handler and split this into files (make the player a class and put commands in separate files automagically loaded by a command handler) cuz 768 line js kinda sux and maybe rename the thing into sth else idk ~~maybe the NeverFindusBoT~~ ask marximimus about that)
@@ -43,7 +43,8 @@ client.on('ready', () => {
 					required: true,
 				}, {
 					name: 'position',
-					description: 'Index in the queue before which the video is going to be added. 0 will result in replacing currently played video.',
+					type: 'INTEGER',
+					description: 'Index in the queue before which the video is going to be added. 0 will replace currently played one.',
 					required: false,
 				},
 			],
@@ -97,6 +98,7 @@ client.on('ready', () => {
 					name: 'type',
 					type: 'STRING',
 					description: 'Loop type (defaults to video)',
+					required: false,
 					choices: [
 						{
 							name: 'disable',
@@ -215,10 +217,16 @@ const checkConnection = (interaction, weak = false) => {
  * Add a video to the queue.
  * @param {import('./index').QueueVideo[]} videos - The video.
  * @param {string} guildId - Guild's id.
+ * @param {number} requestedPosition - Position to put new videos at.
  */
-const addToQueue = async (videos, guildId) => {
+const addToQueue = async (videos, guildId, requestedPosition = null) => {
 	let queueIndex = players[guildId].queue.length + 1;
-	players[guildId].queue.push(...videos);
+	if (requestedPosition === null) players[guildId].queue.push(...videos);
+	else if (requestedPosition === 0) {
+		players[guildId].player.stop();
+		players[guildId].nowPlaying = null;
+		players[guildId].queue.splice(0, 0, ...videos);
+	} else players[guildId].queue.splice(requestedPosition - 1, 0, ...videos), queueIndex = requestedPosition;
 
 	if (!players[guildId].nowPlaying) {
 		await play(guildId);
@@ -315,14 +323,16 @@ client.on('interactionCreate', async (interaction) => {
 				case 'play': {
 					await connectToChannel(interaction);
 
-					const results = await findVideos(interaction.options.getString('query'), 1);
+					const results = await findVideos(interaction.options.getString('query'), 1), requestedPosition = interaction.options.getInteger('position');
 					checkConnection(interaction);
+
+					if (requestedPosition < 0 || requestedPosition > players[interaction.guild.id].queue.length) throw new Error('PEBKAC:Invalid position requested!');
 					if (results.videos) {
 						/**
 						 * @type {import('./index').PlaylistResult}
 						 */
 						const result = results;
-						const position = await addToQueue(result.videos, interaction.guild.id);
+						const position = await addToQueue(result.videos, interaction.guild.id, requestedPosition);
 
 						responseCustomFormatting = true;
 						responseTitle = `<:check:537885340304932875> Playlist has been added to the queue [${result.videos.length + 1} video${result.videos.length + 1 === 1 ? '' : 's'}]! (#${position})`;
@@ -337,7 +347,7 @@ client.on('interactionCreate', async (interaction) => {
 						 * @type {import('./index').QueueVideo}
 						 */
 						const result = results;
-						const position = await addToQueue([result], interaction.guild.id);
+						const position = await addToQueue([result], interaction.guild.id, requestedPosition);
 
 						responseCustomFormatting = true;
 						responseTitle = position === 0 ? 'Now playing!' : `<:check:537885340304932875> Video has been added to the queue! (#${position})`;
@@ -394,20 +404,7 @@ client.on('interactionCreate', async (interaction) => {
 				case 'skip': {
 					checkConnection(interaction);
 
-					let index = -1, amount = 1;
-
-					try {
-						index = interaction.options.getInteger('position');
-					} catch (error) {
-						throw new Error('PEBKAC:Invalid index value!');
-					}
-
-					try {
-						amount = interaction.options.getInteger('amount');
-						if (amount === null) amount = 1;
-					} catch (error) {
-						throw new Error('PEBKAC:Invalid amount!');
-					}
+					const index = interaction.options.getInteger('position'), amount = interaction.options.getInteger('amount') ?? 1;
 
 					if (index === null || index === 0) {
 						if (players[interaction.guild.id].queue.length === 0 && players[interaction.guild.id].nowPlaying === null) {
@@ -417,12 +414,11 @@ client.on('interactionCreate', async (interaction) => {
 							const removed = players[interaction.guild.id].nowPlaying;
 							players[interaction.guild.id].nowPlaying = null;
 
-							amount--;
-							if (amount > 0) players[interaction.guild.id].queue.splice(0, amount);
+							if (amount > 0) players[interaction.guild.id].queue.splice(0, amount - 1);
 							await play(interaction.guild.id);
 
 							responseCustomFormatting = true;
-							responseMessage = `<:check:537885340304932875> ${parse.formatVideo(removed)} ${amount > 0 ? `and ${amount} more video${amount === 1 ? '' : 's'} have` : 'has'} been skipped!`;
+							responseMessage = `<:check:537885340304932875> ${parse.formatVideo(removed)} ${amount > 1 ? `and ${amount - 1} more video${amount - 1 === 1 ? '' : 's'} have` : 'has'} been skipped!`;
 						}
 					} else {
 						const queue = players[interaction.guild.id].queue;
@@ -492,14 +488,7 @@ client.on('interactionCreate', async (interaction) => {
 					checkConnection(interaction);
 					const player = players[interaction.guild.id];
 
-					let type;
-					try {
-						type = interaction.options.getString('type', false);
-					} catch (error) {
-						throw new Error('PEBKAC:Invalid loop type!');
-					}
-
-					switch (type) {
+					switch (interaction.options.getString('type')) {
 						case 'none': {
 							player.loopType = 0;
 							responseMessage = 'Disabled loop!';
