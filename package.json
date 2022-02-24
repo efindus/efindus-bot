@@ -11,10 +11,10 @@
   "license": "UNLICENSED",
   "private": true,
   "dependencies": {
+    "@discordjs/opus": "^0.5.3",
     "@discordjs/voice": "^0.7.5",
     "discord.js": "^13.3.1",
     "dotenv": "^10.0.0",
-    "libsodium-wrappers": "^0.7.9",
     "sodium": "^3.0.2",
     "youtube-dl-exec": "^2.0.0",
     "youtube-sr": "^4.1.13",
