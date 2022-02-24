@@ -16,6 +16,7 @@ const download = require('youtube-dl-exec').exec;
  * add filters (some)
  * maybe soundcloud support
  * turn this into a full-fledged bot (make a command handler and split this into files (make the player a class and put commands in separate files automagically loaded by a command handler) cuz 768 line js kinda sux and maybe rename the thing into sth else idk ~~maybe the NeverFindusBoT~~ ask marximimus about that)
+ * start utilizing the footer (like in the old play)
  * (reminder for the future) bump version
  */
 
@@ -121,7 +122,7 @@ client.on('ready', () => {
 					name: 'volume',
 					type: 'INTEGER',
 					description: 'New volume.',
-					required: true,
+					required: false,
 				},
 			],
 		}, {
@@ -171,6 +172,7 @@ const connectToChannel = async (interaction) => {
 			nowPlaying: null,
 			queue: [],
 			loopType: 0,
+			volume: 1,
 			player: createAudioPlayer({
 				behaviors: {
 					noSubscriber: NoSubscriberBehavior.Pause,
@@ -285,21 +287,23 @@ const play = async (guildId) => {
 		r: '100K',
 	}, { stdio: ['ignore', 'pipe', 'ignore'] });
 
-	const resource = createAudioResource(stream.stdout);
+	players[guildId].resource = createAudioResource(stream.stdout, { inlineVolume: true });
 
-	resource.playStream.on('end', () => {
+	players[guildId].resource.playStream.on('end', () => {
 		if (players[guildId].loopType === 1) players[guildId].queue.splice(0, 0, players[guildId].nowPlaying);
 		else if (players[guildId].loopType === 2) players[guildId].queue.push(players[guildId].nowPlaying);
 
 		players[guildId].nowPlaying = null;
+		players[guildId].resource = null;
 		play(guildId);
 	});
 
-	resource.playStream.on('error', (err) => {
+	players[guildId].resource.playStream.on('error', (err) => {
 		console.log(err);
 	});
 
-	players[guildId].player.play(resource);
+	players[guildId].resource.volume.setVolume(players[guildId].volume);
+	players[guildId].player.play(players[guildId].resource);
 };
 
 const leave = (interaction) => {
@@ -547,6 +551,22 @@ client.on('interactionCreate', async (interaction) => {
 					break;
 				}
 
+				case 'volume': {
+					checkConnection(interaction);
+					const player = players[interaction.guild.id], newVolume = interaction.options.getInteger('volume');
+
+					if (newVolume !== null) {
+						if (newVolume < 0 || newVolume > 200) throw new Error('PEBKAC:Invalid volume! Available range: 0-200%');
+						player.volume = newVolume / 100;
+						if (player.resource !== null) player.resource.volume.setVolume(player.volume);
+					}
+
+					responseCustomFormatting = true;
+					responseMessage = `**Volume:**\n[${'▬'.repeat(Math.round(player.volume * 5))}](https://youtu.be/dQw4w9WgXcQ)${'▬'.repeat(10 - Math.round(player.volume * 5))} \`${player.volume * 100}%\``;
+
+					break;
+				}
+
 				case 'delayautoleave': {
 					const player = players[interaction.guild.id];
 
@@ -558,7 +578,6 @@ client.on('interactionCreate', async (interaction) => {
 					}
 
 					if (player.delayedAutoleave !== 0) throw new Error('PEBKAC:Autoleave was already delayed!');
-
 					player.delayedAutoleave = 1;
 
 					responseMessage = 'I\'ll stay in the voice channel alone 5 minutes longer. (sad lonely bot noises)';
