@@ -41,6 +41,10 @@ client.on('ready', () => {
 					type: 'STRING',
 					description: 'Video\'s title.',
 					required: true,
+				}, {
+					name: 'position',
+					description: 'Index in the queue before which the video is going to be added. 0 will result in replacing currently played video.',
+					required: false,
 				},
 			],
 		}, {
@@ -195,13 +199,14 @@ const connectToChannel = async (interaction) => {
 /**
  * Check if user is connected to the channel.
  * @param {import("discord.js").Interaction} interaction - User's interaction.
+ * @param {boolean} weak - Allow users not connected to the VC
  */
-const checkConnection = (interaction) => {
+const checkConnection = (interaction, weak = false) => {
 	if (!interaction.guild.me.voice.channel || !players[interaction.guild.id]) {
 		throw new Error('PEBKAC:I\'m not connected to any voice channel on this server.');
 	}
 
-	if (interaction.member.voice.channelId !== interaction.guild.me.voice.channelId) {
+	if (!weak && interaction.member.voice.channelId !== interaction.guild.me.voice.channelId) {
 		throw new Error(`PEBKAC:You're not connected to <#${interaction.guild.me.voice.channelId}>`);
 	}
 };
@@ -434,7 +439,7 @@ client.on('interactionCreate', async (interaction) => {
 				}
 
 				case 'queue': {
-					checkConnection(interaction);
+					checkConnection(interaction, true);
 					const player = players[interaction.guild.id];
 
 					let formattedQueue = '';
