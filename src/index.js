@@ -12,7 +12,6 @@ const download = require('youtube-dl-exec').exec;
 /*
  * TODO:
  * scrollable queue
- * add volume
  * add filters (some)
  * maybe soundcloud support
  * turn this into a full-fledged bot (make a command handler and split this into files (make the player a class and put commands in separate files automagically loaded by a command handler) cuz 768 line js kinda sux and maybe rename the thing into sth else idk ~~maybe the NeverFindusBoT~~ ask marximimus about that)
@@ -149,7 +148,7 @@ const players = {};
 
 /**
  * Connect to a voice channel.
- * @param {import("discord.js").Interaction} interaction - User's interaction.
+ * @param {import('discord.js').Interaction} interaction - User's interaction.
  */
 const connectToChannel = async (interaction) => {
 	if (!interaction.member.voice.channel) {
@@ -202,7 +201,7 @@ const connectToChannel = async (interaction) => {
 
 /**
  * Check if user is connected to the channel.
- * @param {import("discord.js").Interaction} interaction - User's interaction.
+ * @param {import('discord.js').Interaction} interaction - User's interaction.
  * @param {boolean} weak - Allow users not connected to the VC
  */
 const checkConnection = (interaction, weak = false) => {
