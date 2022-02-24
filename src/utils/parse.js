@@ -37,9 +37,9 @@ exports.getQueueVideo = (rawVideo) => {
 /**
  * Turn a playlist object into a simplified version with a list of QueueVideos
  * @param {import('ytpl').Result} rawPlaylist - Playlist object to standardize
- * @returns {import('../index').SearchPlaylist} Parsed playlist object
+ * @returns {import('../index').PlaylistResult} Parsed playlist object
  */
-exports.getSearchPlaylist = (rawPlaylist) => {
+exports.getPlaylistResult = (rawPlaylist) => {
 	return {
 		id: rawPlaylist.id,
 		title: rawPlaylist.title,

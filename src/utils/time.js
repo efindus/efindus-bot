@@ -23,7 +23,7 @@ exports.formatMS = (input) => {
 	let result = '';
 	input /= 1000, input = Math.round(input);
 	const hours = Math.floor(input / 60 / 60);
-	const minutes = `${Math.floor(input / 60)}`;
+	const minutes = `${Math.floor(input / 60 % 60)}`;
 	const seconds = `${Math.floor(input % 60)}`;
 	if (hours >= 1) result += `${`${hours}`.padStart(2, '0')}:`;
 	result += `${minutes.padStart(2, '0')}:`;

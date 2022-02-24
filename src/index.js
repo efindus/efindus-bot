@@ -1,6 +1,5 @@
 require('dotenv').config();
 require('./utils/array');
-const time = require('./utils/time');
 const parse = require('./utils/parse');
 const { Client } = require('discord.js');
 const { entersState, joinVoiceChannel, createAudioPlayer, NoSubscriberBehavior, createAudioResource, VoiceConnectionStatus, AudioPlayerStatus } = require('@discordjs/voice');
@@ -136,6 +135,9 @@ client.on('ready', () => {
 	console.log(`\x1b[37m\x1b[42mREADY\x1b[0m ${client.user.tag} is ready!`);
 });
 
+/**
+ * @type {Object.<string, import('./index').PlayerObject>}
+ */
 const players = {};
 
 /**
@@ -148,6 +150,8 @@ const connectToChannel = async (interaction) => {
 		throw new Error('PEBKAC:You\'re not connected to any voice channel on this server.');
 	}
 
+	if (!interaction.member.voice.channel.joinable) throw new Error('PEBKAC:I don\'t have sufficient permissions to join this voice channel!');
+
 	if (!interaction.guild.me.voice.channel || !players[interaction.guild.id]) {
 		const connection = await joinVoiceChannel({
 			channelId: interaction.member.voice.channelId,
@@ -155,14 +159,12 @@ const connectToChannel = async (interaction) => {
 			adapterCreator: interaction.guild.voiceAdapterCreator,
 		});
 
-		if (players[interaction.guild.id]) {
-			return;
-		}
+		if (players[interaction.guild.id]) return;
 
 		players[interaction.guild.id] = {
 			nowPlaying: null,
 			queue: [],
-			loopType: 0, // 0 -> no loop; 1 -> single video loop; 2 -> queue loop;
+			loopType: 0,
 			player: createAudioPlayer({
 				behaviors: {
 					noSubscriber: NoSubscriberBehavior.Pause,
@@ -205,11 +207,29 @@ const checkConnection = (interaction) => {
 };
 
 /**
- * Parses user inputed query and determines type of entered data
- * @param {string} query - Query to sanitize
- * @returns Parsed url and info if the url is a playlist
+ * Add a video to the queue.
+ * @param {import('./index').QueueVideo[]} videos - The video.
+ * @param {string} guildId - Guild's id.
  */
-const sanitizeQuery = async (query) => {
+const addToQueue = async (videos, guildId) => {
+	let queueIndex = players[guildId].queue.length + 1;
+	players[guildId].queue.push(...videos);
+
+	if (!players[guildId].nowPlaying) {
+		await play(guildId);
+		queueIndex = 0;
+	}
+
+	return queueIndex;
+};
+
+/**
+ * Find videos.
+ * @param {string} title - Video's title.
+ * @param {number} limit - Number of videos to find.
+ * @returns {Promise<import('./index').PlaylistResult | import('./index').QueueVideo | import('./index').QueueVideo[]>} Videos.
+ */
+const findVideos = async (query, limit) => {
 	let url = query.trim(), playlist = false;
 
 	const videoID = parse.getVideoID(url);
@@ -218,60 +238,21 @@ const sanitizeQuery = async (query) => {
 	else {
 		url = (await ytsr.getFilters(url)).get('Type').get('Video').url;
 
-		if (!url) {
-			throw new Error('PEBKAC:Video could not be found.');
-		}
+		if (!url) throw new Error('PEBKAC:Video could not be found.');
 	}
-
-	return {
-		url,
-		playlist,
-	};
-};
-
-/**
- * Add a video to the queue.
- * @param {import('./index').QueueVideo} video - The video.
- * @param {string} guildId - Guild's id.
- */
-const addToQueue = async (video, guildId) => {
-	// FIXME: Make queue hold id's instead of urls and then move sanitizeQuery function back into findVideos
-	players[guildId].queue.push({
-		url: (await sanitizeQuery(parse.getVideoURL(video.id))).url,
-		title: video.title,
-		author: video.author.name,
-		duration: video.duration,
-	});
-
-	if (!players[guildId].nowPlaying) {
-		await play(guildId);
-		return 0;
-	}
-
-	return players[guildId].queue.length;
-};
-
-/**
- * Find videos.
- * @param {string} title - Video's title.
- * @param {number} limit - Number of videos to find.
- * @returns {Promise<import('./index').SearchPlaylist | import('./index').QueueVideo | import('./index').QueueVideo[]>} Videos.
- */
-const findVideos = async (query, limit) => {
-	const { url, playlist } = await sanitizeQuery(query);
 
 	if (playlist && limit === 1) {
 		try {
-			return parse.getSearchPlaylist(await ytpl(url, { limit: 200 }));
+			return parse.getPlaylistResult(await ytpl(url, { limit: 200 }));
 		} catch (error) {
 			throw new Error('PEBKAC:Unknown playlist!');
 		}
 	} else {
-		if (limit !== 1) {
+		if (limit !== 1 || url.startsWith('https://www.youtube.com/results')) {
 			const results = await ytsr(url, { limit: limit });
 			if (results.items.length === 0) throw new Error('PEBKAC:Video could not be found.');
 
-			return results.items.map(item => parse.getQueueVideo(item));
+			return limit === 1 ? parse.getQueueVideo(results.items[0]) : results.items.map(item => parse.getQueueVideo(item));
 		} else {
 			return parse.getQueueVideo(await ytsearch.getVideo(url));
 		}
@@ -279,14 +260,12 @@ const findVideos = async (query, limit) => {
 };
 
 const play = async (guildId) => {
-	if (players[guildId].nowPlaying || players[guildId].queue.length === 0) {
-		return;
-	}
+	if (players[guildId].nowPlaying || players[guildId].queue.length === 0) return;
 
 	players[guildId].nowPlaying = players[guildId].queue.shift();
 
 	// FIXME: When video has multiple audio tracks it selects some non original one (for now that's only a problem when watching mrbeast's videos)
-	const stream = download(players[guildId].nowPlaying.url, {
+	const stream = download(parse.getVideoURL(players[guildId].nowPlaying.id), {
 		o: '-',
 		q: '',
 		f: 'bestaudio[ext=webm+acodec=opus+asr=48000]/bestaudio',
@@ -335,17 +314,13 @@ client.on('interactionCreate', async (interaction) => {
 					checkConnection(interaction);
 					if (results.videos) {
 						/**
-						 * @type {import('./index').SearchPlaylist}
+						 * @type {import('./index').PlaylistResult}
 						 */
 						const result = results;
-						const position = await addToQueue(result.videos[0], interaction.guild.id);
-						result.videos.shift();
-						for (const video of result.videos) {
-							await addToQueue(video, interaction.guild.id);
-						}
+						const position = await addToQueue(result.videos, interaction.guild.id);
 
 						responseCustomFormatting = true;
-						responseTitle = `<:check:537885340304932875> Playlist has been added to the queue [${result.videos.length + 1} video${result.videos.length + 1 < 2 ? '' : 's'}]! (#${position})`;
+						responseTitle = `<:check:537885340304932875> Playlist has been added to the queue [${result.videos.length + 1} video${result.videos.length + 1 === 1 ? '' : 's'}]! (#${position})`;
 						responseMessage = `[${result.title}](${parse.getPlaylistURL(result.id)}) by **${result.author}**`;
 						responseProps = {
 							thumbnail: {
@@ -357,11 +332,11 @@ client.on('interactionCreate', async (interaction) => {
 						 * @type {import('./index').QueueVideo}
 						 */
 						const result = results;
-						const position = await addToQueue(result, interaction.guild.id);
+						const position = await addToQueue([result], interaction.guild.id);
 
 						responseCustomFormatting = true;
 						responseTitle = position === 0 ? 'Now playing!' : `<:check:537885340304932875> Video has been added to the queue! (#${position})`;
-						responseMessage = `[${result.title} [${time.formatMS(result.duration)}]](${parse.getVideoURL(result.id)}) by **${result.author}**`;
+						responseMessage = `${parse.formatVideo(result)}`;
 						responseProps = {
 							thumbnail: {
 								url: parse.getVideoThubnailURL(result.id),
@@ -434,25 +409,24 @@ client.on('interactionCreate', async (interaction) => {
 							throw new Error('PEBKAC:Nothing is currently playing!');
 						} else {
 							players[interaction.guild.id].player.stop();
+							const removed = players[interaction.guild.id].nowPlaying;
 							players[interaction.guild.id].nowPlaying = null;
 
 							amount--;
 							if (amount > 0) players[interaction.guild.id].queue.splice(0, amount);
 							await play(interaction.guild.id);
 
-							// TODO: Show the skipped video like below
-							responseMessage = amount < 1 ? 'Video has been skipped!' : `${amount + 1} videos have been skipped!`;
+							responseCustomFormatting = true;
+							responseMessage = `<:check:537885340304932875> ${parse.formatVideo(removed)} ${amount > 0 ? `and ${amount} more video${amount === 1 ? '' : 's'} have` : 'has'} been skipped!`;
 						}
 					} else {
 						const queue = players[interaction.guild.id].queue;
-						if (queue.length === 0) {
-							throw new Error('PEBKAC:The queue is empty!');
-						} else if (queue.length < index || index < 0) {
-							throw new Error('PEBKAC:Invalid index!');
-						} else {
+						if (queue.length === 0) throw new Error('PEBKAC:The queue is empty!');
+						else if (queue.length < index || index < 0) throw new Error('PEBKAC:Invalid index!');
+						else {
 							const removed = queue.splice(index - 1, amount)[0];
 							responseCustomFormatting = true;
-							responseMessage = `<:check:537885340304932875> [${removed.title.slice(0, 75)} [${removed.duration}]](${removed.url}) by **${removed.author.slice(0, 45)}** ${amount > 1 ? `and ${amount - 1} more videos have` : 'has'} been skipped!`;
+							responseMessage = `<:check:537885340304932875> ${parse.formatVideo(removed)} ${amount > 1 ? `and ${amount - 1} more video${amount - 1 === 1 ? '' : 's'} have` : 'has'} been skipped!`;
 						}
 					}
 
@@ -460,29 +434,24 @@ client.on('interactionCreate', async (interaction) => {
 				}
 
 				case 'queue': {
-					// FIXME: Use methods from parse everywhere
 					checkConnection(interaction);
 					const player = players[interaction.guild.id];
 
 					let formattedQueue = '';
 
-					if (player.nowPlaying !== null) {
-						formattedQueue += `:play_pause: **Currently playing${player.loopType === 0 ? '' : ` [loop: ${player.loopType === 1 ? 'video' : 'queue'}]`}:**\n**[0]** [${player.nowPlaying.title.slice(0, 75)} [${time.formatMS(player.player.state.playbackDuration)}/${player.nowPlaying.duration}]](${player.nowPlaying.url}) by **${player.nowPlaying.author.slice(0, 45)}**\n\n`;
-					}
+					if (player.nowPlaying !== null) formattedQueue += `:play_pause: **Currently playing${player.loopType === 0 ? '' : ` [loop: ${player.loopType === 1 ? 'video' : 'queue'}]`}:**\n**[0]** ${parse.formatVideoWithProgress(player.nowPlaying, player.player.state.playbackDuration)}\n\n`;
 
 					if (player.queue.length !== 0) {
 						formattedQueue += `:notepad_spiral: **Current queue [${player.queue.length}]:**\n`;
 						for (let i = 0; i < player.queue.length; i++) {
-							formattedQueue += `**[${i + 1}]** [${player.queue[i].title.slice(0, 75)} [${player.queue[i].duration}]](${player.queue[i].url}) by **${player.queue[i].author.slice(0, 45)}**\n`;
+							formattedQueue += `**[${i + 1}]** ${parse.formatVideo(player.queue[i])}\n`;
 						}
 					}
 
 					if (formattedQueue.length > 2000) {
 						formattedQueue = formattedQueue.slice(0, 1997);
 						formattedQueue += '...';
-					} else if (formattedQueue.length === 0) {
-						throw new Error('PEBKAC:Nothing is currently playing!');
-					}
+					} else if (formattedQueue.length === 0) throw new Error('PEBKAC:Nothing is currently playing!');
 
 					responseCustomFormatting = true;
 					responseMessage = formattedQueue;
@@ -494,11 +463,9 @@ client.on('interactionCreate', async (interaction) => {
 					checkConnection(interaction);
 					const player = players[interaction.guild.id];
 
-					if (player.queue.length === 0) {
-						throw new Error('PEBKAC:The queue is empty!');
-					} else {
+					if (player.queue.length === 0) throw new Error('PEBKAC:The queue is empty!');
+					else {
 						player.queue = [];
-
 						responseMessage = 'Cleared the queue!';
 					}
 					break;
@@ -508,11 +475,9 @@ client.on('interactionCreate', async (interaction) => {
 					checkConnection(interaction);
 					const player = players[interaction.guild.id];
 
-					if (player.queue.length === 0) {
-						throw new Error('PEBKAC:The queue is empty!');
-					} else {
+					if (player.queue.length === 0) throw new Error('PEBKAC:The queue is empty!');
+					else {
 						player.queue.shuffle();
-
 						responseMessage = 'Shuffled the queue!';
 					}
 					break;
@@ -564,17 +529,12 @@ client.on('interactionCreate', async (interaction) => {
 					checkConnection(interaction);
 					const player = players[interaction.guild.id];
 
-					if (player.nowPlaying === null) {
-						throw new Error('PEBKAC:Nothing is currently playing!');
-					}
+					if (player.nowPlaying === null) throw new Error('PEBKAC:Nothing is currently playing!');
 
-					if (player.player.state.status === AudioPlayerStatus.Paused) {
-						throw new Error('PEBKAC:The video is already paused!');
-					}
+					if (player.player.state.status === AudioPlayerStatus.Paused) throw new Error('PEBKAC:The video is already paused!');
 
-					if (player.player.pause()) {
-						responseMessage = 'Paused the video!';
-					} else throw new Error('PEBKAC:Failed to pause the video!');
+					if (player.player.pause()) responseMessage = 'Paused the video!';
+					else throw new Error('PEBKAC:Failed to pause the video!');
 
 					break;
 				}
@@ -583,17 +543,12 @@ client.on('interactionCreate', async (interaction) => {
 					checkConnection(interaction);
 					const player = players[interaction.guild.id];
 
-					if (player.nowPlaying === null) {
-						throw new Error('PEBKAC:Nothing is currently playing!');
-					}
+					if (player.nowPlaying === null) throw new Error('PEBKAC:Nothing is currently playing!');
 
-					if (player.player.state.status !== AudioPlayerStatus.Paused) {
-						throw new Error('PEBKAC:The video isn\'t paused!');
-					}
+					if (player.player.state.status !== AudioPlayerStatus.Paused) throw new Error('PEBKAC:The video isn\'t paused!');
 
-					if (player.player.unpause()) {
-						responseMessage = 'Resumed the video!';
-					} else throw new Error('PEBKAC:Failed to resume the video!');
+					if (player.player.unpause()) responseMessage = 'Resumed the video!';
+					else throw new Error('PEBKAC:Failed to resume the video!');
 
 					break;
 				}
@@ -601,18 +556,14 @@ client.on('interactionCreate', async (interaction) => {
 				case 'delayautoleave': {
 					const player = players[interaction.guild.id];
 
-					if (!player) {
-						checkConnection(interaction);
-					}
+					if (!player) checkConnection(interaction);
 
 					if (player.autoleaveTimeout === null) {
 						checkConnection(interaction);
 						throw new Error('PEBKAC:I\'m not currently autoleaving!');
 					}
 
-					if (player.delayedAutoleave !== 0) {
-						throw new Error('PEBKAC:Autoleave was already delayed!');
-					}
+					if (player.delayedAutoleave !== 0) throw new Error('PEBKAC:Autoleave was already delayed!');
 
 					player.delayedAutoleave = 1;
 
@@ -647,11 +598,11 @@ client.on('interactionCreate', async (interaction) => {
 					 */
 					const result = (await findVideos(interaction.values[0], 1));
 					checkConnection(interaction);
-					const position = await addToQueue(result, interaction.guild.id);
+					const position = await addToQueue([result], interaction.guild.id);
 
 					responseCustomFormatting = true;
 					responseTitle = position === 0 ? 'Now playing!' : `<:check:537885340304932875> Video has been added to the queue! (#${position})`;
-					responseMessage = `[${result.title} [${time.formatMS(result.duration)}]](${parse.getVideoURL(result.id)}) by **${result.author}**`;
+					responseMessage = `${parse.formatVideo(result)}`;
 					responseProps = {
 						thumbnail: {
 							url: parse.getVideoThubnailURL(result.id),
@@ -721,12 +672,9 @@ client.on('interactionCreate', async (interaction) => {
 
 client.on('voiceStateUpdate', async (oldState, newState) => {
 	if (oldState.id === client.user.id) {
-		if (newState.channelId && players[oldState.guild.id]) {
-			players[oldState.guild.id].channelId = newState.channelId;
-		} else {
-			if (players[oldState.guild.id] && !players[oldState.guild.id].leaving) {
-				leave(oldState);
-			}
+		if (newState.channelId && players[oldState.guild.id]) players[oldState.guild.id].channelId = newState.channelId;
+		else {
+			if (players[oldState.guild.id] && !players[oldState.guild.id].leaving) leave(oldState);
 			return;
 		}
 	}
@@ -744,9 +692,7 @@ client.on('voiceStateUpdate', async (oldState, newState) => {
 				if (player.delayedAutoleave === 1) {
 					player.delayedAutoleave = 2;
 					setTimeout(autoleave, 5 * 60 * 1000);
-				} else {
-					leave(oldState);
-				}
+				} else leave(oldState);
 			};
 			player.autoleaveTimeout = setTimeout(autoleave, 30 * 1000);
 		} else if (player.autoleaveTimeout !== null) {
