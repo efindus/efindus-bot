@@ -25,4 +25,5 @@ export interface PlayerObject {
 	/** Indicates whether leaving was intended by the bot */ leaving: boolean,
 	/** Timeout object for autoleaving the VC */ autoleaveTimeout: NodeJS.Timeout,
 	/** 0 - autoleave wasn't delayed; 1 - autoleave was delayed but bot didn't react yet; 2 - indicates that autoleave was delayed and that it got acknowledged */ delayedAutoleave: 0 | 1 | 2,
+	/** Unique id assigned to this player. Used to ignore interactions on old messages */ uid: string,
 };

@@ -1,5 +1,6 @@
 require('dotenv').config();
 require('./utils/array');
+const { randomBytes } = require('crypto');
 const parse = require('./utils/parse');
 const { Client } = require('discord.js');
 const { entersState, joinVoiceChannel, createAudioPlayer, NoSubscriberBehavior, createAudioResource, VoiceConnectionStatus, AudioPlayerStatus } = require('@discordjs/voice');
@@ -67,6 +68,14 @@ client.on('ready', () => {
 		}, {
 			name: 'queue',
 			description: 'Display the queue.',
+			options: [
+				{
+					name: 'page',
+					type: 'INTEGER',
+					description: 'Number of page in queue to show.',
+					required: false,
+				},
+			],
 		}, {
 			name: 'clear',
 			description: 'Clear the queue.',
@@ -182,6 +191,7 @@ const connectToChannel = async (interaction) => {
 			leaving: false,
 			autoleaveTimeout: null,
 			delayedAutoleave: 0,
+			uid: Buffer.from(randomBytes(16)).toString('base64'),
 		};
 
 		// players[interaction.guild.id].player.on('error', error => {
@@ -472,7 +482,9 @@ client.on('interactionCreate', async (interaction) => {
 
 				case 'queue': {
 					checkConnection(interaction, true);
-					const { formattedQueue } = generateQueue(interaction.guild.id, 0);
+					const pageIndex = (interaction.options.getInteger('page') ?? 1) - 1;
+					if (pageIndex < 0 || pageIndex > Math.floor(players[interaction.guild.id].queue.length / 10)) throw new Error('PEBKAC:Invalid page number!');
+					const { formattedQueue } = generateQueue(interaction.guild.id, pageIndex);
 					if (formattedQueue.length === 0) throw new Error('PEBKAC:Nothing is currently playing!');
 
 					response.customFormatting = true;
@@ -484,12 +496,12 @@ client.on('interactionCreate', async (interaction) => {
 								components: [
 									{
 										type: 'BUTTON',
-										customId: 'queue-left-0',
+										customId: `queue-left-${players[interaction.guild.id].uid}-${pageIndex}`,
 										label: '<',
 										style: 'PRIMARY',
 									}, {
 										type: 'BUTTON',
-										customId: 'queue-right-0',
+										customId: `queue-right-${players[interaction.guild.id].uid}-${pageIndex}`,
 										label: '>',
 										style: 'PRIMARY',
 									},
@@ -500,7 +512,7 @@ client.on('interactionCreate', async (interaction) => {
 					response.customEmbedProperties = {
 						footer: {
 							iconURL: interaction.member.displayAvatarURL(),
-							text: `Page 1/${Math.floor(players[interaction.guild.id].queue.length / 10) + 1}`,
+							text: `Page ${pageIndex + 1}/${Math.floor(players[interaction.guild.id].queue.length / 10) + 1}`,
 						},
 					};
 
@@ -695,11 +707,13 @@ client.on('interactionCreate', async (interaction) => {
 			const tokens = interaction.customId.split('-');
 			switch (tokens[0]) {
 				case 'queue': {
+					if (!players[interaction.guild.id]) return;
+					if (tokens[2] !== players[interaction.guild.id].uid) return;
 					let generatedQueue;
 					if (tokens[1] === 'left') {
-						generatedQueue = generateQueue(interaction.guild.id, +tokens[2] - 1);
+						generatedQueue = generateQueue(interaction.guild.id, +tokens[3] - 1);
 					} else {
-						generatedQueue = generateQueue(interaction.guild.id, +tokens[2] + 1);
+						generatedQueue = generateQueue(interaction.guild.id, +tokens[3] + 1);
 					}
 					await interaction.editReply({
 						embeds: [
@@ -722,12 +736,12 @@ client.on('interactionCreate', async (interaction) => {
 								components: [
 									{
 										type: 'BUTTON',
-										customId: `queue-left-${generatedQueue.pageIndex}`,
+										customId: `queue-left-${players[interaction.guild.id].uid}-${generatedQueue.pageIndex}`,
 										label: '<',
 										style: 'PRIMARY',
 									}, {
 										type: 'BUTTON',
-										customId: `queue-right-${generatedQueue.pageIndex}`,
+										customId: `queue-right-${players[interaction.guild.id].uid}-${generatedQueue.pageIndex}`,
 										label: '>',
 										style: 'PRIMARY',
 									},
