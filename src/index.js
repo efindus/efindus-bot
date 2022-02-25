@@ -11,7 +11,6 @@ const download = require('youtube-dl-exec').exec;
 // https://github.com/discordjs/voice/tree/main/examples/music-bot/src/music
 /*
  * TODO:
- * scrollable queue
  * add filters (some)
  * maybe soundcloud support
  * turn this into a full-fledged bot (make a command handler and split this into files (make the player a class and put commands in separate files automagically loaded by a command handler) cuz 768 line js kinda sux and maybe rename the thing into sth else idk ~~maybe the NeverFindusBoT~~ ask marximimus about that)
@@ -312,16 +311,41 @@ const leave = (interaction) => {
 	delete players[interaction.guild.id];
 };
 
-client.on('interactionCreate', async (interaction) => {
-	if (!interaction.guild) {
-		return;
+const generateQueue = (guildId, pageIndex) => {
+	if (pageIndex < 0) pageIndex = 0;
+	const player = players[guildId];
+	let formattedQueue = '';
+
+	if (player.nowPlaying !== null) formattedQueue += `:play_pause: **Currently playing${player.loopType === 0 ? '' : ` [loop: ${player.loopType === 1 ? 'video' : 'queue'}]`}:**\n**[0]** ${parse.formatVideoWithProgress(player.nowPlaying, player.player.state.playbackDuration)}\n\n`;
+
+	if (player.queue.length < pageIndex * 10) pageIndex = Math.floor(player.queue.length / 10);
+	if (player.queue.length !== 0) {
+		formattedQueue += `:notepad_spiral: **Current queue [${player.queue.length}]:**\n`;
+		for (let i = pageIndex * 10; i < Math.min(player.queue.length, (pageIndex + 1) * 10); i++) {
+			formattedQueue += `**[${i + 1}]** ${parse.formatVideo(player.queue[i])}\n`;
+		}
 	}
 
+	return {
+		formattedQueue,
+		pageIndex,
+	};
+};
+
+client.on('interactionCreate', async (interaction) => {
+	if (!interaction.guild) return;
+
 	try {
-		let responseTitle = '', responseMessage = '', responseProps = {}, responseCustomFormatting = false;
-		await interaction.deferReply();
+		const response = {
+			title: '',
+			message: '',
+			customProperties: {},
+			customFormatting: false,
+			customEmbedProperties: {},
+		};
 
 		if (interaction.isCommand()) {
+			await interaction.deferReply();
 			switch (interaction.commandName) {
 				case 'play': {
 					await connectToChannel(interaction);
@@ -337,10 +361,10 @@ client.on('interactionCreate', async (interaction) => {
 						const result = results;
 						const position = await addToQueue(result.videos, interaction.guild.id, requestedPosition);
 
-						responseCustomFormatting = true;
-						responseTitle = `<:check:537885340304932875> Playlist has been added to the queue [${result.videos.length + 1} video${result.videos.length + 1 === 1 ? '' : 's'}]! (#${position})`;
-						responseMessage = `[${result.title}](${parse.getPlaylistURL(result.id)}) by **${result.author}**`;
-						responseProps = {
+						response.customFormatting = true;
+						response.title = `<:check:537885340304932875> Playlist has been added to the queue [${result.videos.length + 1} video${result.videos.length + 1 === 1 ? '' : 's'}]! (#${position})`;
+						response.message = `[${result.title}](${parse.getPlaylistURL(result.id)}) by **${result.author}**`;
+						response.customEmbedProperties = {
 							thumbnail: {
 								url: result.thumbnailURL,
 							},
@@ -352,10 +376,10 @@ client.on('interactionCreate', async (interaction) => {
 						const result = results;
 						const position = await addToQueue([result], interaction.guild.id, requestedPosition);
 
-						responseCustomFormatting = true;
-						responseTitle = position === 0 ? 'Now playing!' : `<:check:537885340304932875> Video has been added to the queue! (#${position})`;
-						responseMessage = `${parse.formatVideo(result)}`;
-						responseProps = {
+						response.customFormatting = true;
+						response.title = position === 0 ? 'Now playing!' : `<:check:537885340304932875> Video has been added to the queue! (#${position})`;
+						response.message = `${parse.formatVideo(result)}`;
+						response.customEmbedProperties = {
 							thumbnail: {
 								url: parse.getVideoThubnailURL(result.id),
 							},
@@ -383,7 +407,7 @@ client.on('interactionCreate', async (interaction) => {
 						});
 					});
 
-					responseProps = {
+					response.customProperties = {
 						content: '**Select a video:**',
 						components: [
 							{
@@ -420,8 +444,8 @@ client.on('interactionCreate', async (interaction) => {
 							if (amount > 0) players[interaction.guild.id].queue.splice(0, amount - 1);
 							await play(interaction.guild.id);
 
-							responseCustomFormatting = true;
-							responseMessage = `<:check:537885340304932875> ${parse.formatVideo(removed)} ${amount > 1 ? `and ${amount - 1} more video${amount - 1 === 1 ? '' : 's'} have` : 'has'} been skipped!`;
+							response.customFormatting = true;
+							response.message = `<:check:537885340304932875> ${parse.formatVideo(removed)} ${amount > 1 ? `and ${amount - 1} more video${amount - 1 === 1 ? '' : 's'} have` : 'has'} been skipped!`;
 						}
 					} else {
 						const queue = players[interaction.guild.id].queue;
@@ -429,8 +453,8 @@ client.on('interactionCreate', async (interaction) => {
 						else if (queue.length < index || index < 0) throw new Error('PEBKAC:Invalid index!');
 						else {
 							const removed = queue.splice(index - 1, amount)[0];
-							responseCustomFormatting = true;
-							responseMessage = `<:check:537885340304932875> ${parse.formatVideo(removed)} ${amount > 1 ? `and ${amount - 1} more video${amount - 1 === 1 ? '' : 's'} have` : 'has'} been skipped!`;
+							response.customFormatting = true;
+							response.message = `<:check:537885340304932875> ${parse.formatVideo(removed)} ${amount > 1 ? `and ${amount - 1} more video${amount - 1 === 1 ? '' : 's'} have` : 'has'} been skipped!`;
 						}
 					}
 
@@ -439,26 +463,37 @@ client.on('interactionCreate', async (interaction) => {
 
 				case 'queue': {
 					checkConnection(interaction, true);
-					const player = players[interaction.guild.id];
+					const { formattedQueue } = generateQueue(interaction.guild.id, 0);
+					if (formattedQueue.length === 0) throw new Error('PEBKAC:Nothing is currently playing!');
 
-					let formattedQueue = '';
-
-					if (player.nowPlaying !== null) formattedQueue += `:play_pause: **Currently playing${player.loopType === 0 ? '' : ` [loop: ${player.loopType === 1 ? 'video' : 'queue'}]`}:**\n**[0]** ${parse.formatVideoWithProgress(player.nowPlaying, player.player.state.playbackDuration)}\n\n`;
-
-					if (player.queue.length !== 0) {
-						formattedQueue += `:notepad_spiral: **Current queue [${player.queue.length}]:**\n`;
-						for (let i = 0; i < player.queue.length; i++) {
-							formattedQueue += `**[${i + 1}]** ${parse.formatVideo(player.queue[i])}\n`;
-						}
-					}
-
-					if (formattedQueue.length > 2000) {
-						formattedQueue = formattedQueue.slice(0, 1997);
-						formattedQueue += '...';
-					} else if (formattedQueue.length === 0) throw new Error('PEBKAC:Nothing is currently playing!');
-
-					responseCustomFormatting = true;
-					responseMessage = formattedQueue;
+					response.customFormatting = true;
+					response.message = formattedQueue;
+					response.customProperties = {
+						components: [
+							{
+								type: 'ACTION_ROW',
+								components: [
+									{
+										type: 'BUTTON',
+										customId: 'queue-left-0',
+										label: '<',
+										style: 'PRIMARY',
+									}, {
+										type: 'BUTTON',
+										customId: 'queue-right-0',
+										label: '>',
+										style: 'PRIMARY',
+									},
+								],
+							},
+						],
+					};
+					response.customEmbedProperties = {
+						footer: {
+							iconURL: interaction.member.displayAvatarURL(),
+							text: `Page 1/${Math.floor(players[interaction.guild.id].queue.length / 10) + 1}`,
+						},
+					};
 
 					break;
 				}
@@ -470,7 +505,7 @@ client.on('interactionCreate', async (interaction) => {
 					if (player.queue.length === 0) throw new Error('PEBKAC:The queue is empty!');
 					else {
 						player.queue = [];
-						responseMessage = 'Cleared the queue!';
+						response.message = 'Cleared the queue!';
 					}
 					break;
 				}
@@ -482,7 +517,7 @@ client.on('interactionCreate', async (interaction) => {
 					if (player.queue.length === 0) throw new Error('PEBKAC:The queue is empty!');
 					else {
 						player.queue.shuffle();
-						responseMessage = 'Shuffled the queue!';
+						response.message = 'Shuffled the queue!';
 					}
 					break;
 				}
@@ -494,19 +529,19 @@ client.on('interactionCreate', async (interaction) => {
 					switch (interaction.options.getString('type')) {
 						case 'none': {
 							player.loopType = 0;
-							responseMessage = 'Disabled loop!';
+							response.message = 'Disabled loop!';
 							break;
 						}
 
 						case 'queue': {
 							player.loopType = 2;
-							responseMessage = 'Enabled queue looping!';
+							response.message = 'Enabled queue looping!';
 							break;
 						}
 
 						default: {
 							player.loopType = 1;
-							responseMessage = 'Enabled video looping!';
+							response.message = 'Enabled video looping!';
 							break;
 						}
 					}
@@ -518,7 +553,7 @@ client.on('interactionCreate', async (interaction) => {
 					checkConnection(interaction);
 					leave(interaction);
 
-					responseMessage = 'Successfully left the voice channel!';
+					response.message = 'Successfully left the voice channel!';
 					break;
 				}
 
@@ -530,7 +565,7 @@ client.on('interactionCreate', async (interaction) => {
 
 					if (player.player.state.status === AudioPlayerStatus.Paused) throw new Error('PEBKAC:The video is already paused!');
 
-					if (player.player.pause()) responseMessage = 'Paused the video!';
+					if (player.player.pause()) response.message = 'Paused the video!';
 					else throw new Error('PEBKAC:Failed to pause the video!');
 
 					break;
@@ -544,7 +579,7 @@ client.on('interactionCreate', async (interaction) => {
 
 					if (player.player.state.status !== AudioPlayerStatus.Paused) throw new Error('PEBKAC:The video isn\'t paused!');
 
-					if (player.player.unpause()) responseMessage = 'Resumed the video!';
+					if (player.player.unpause()) response.message = 'Resumed the video!';
 					else throw new Error('PEBKAC:Failed to resume the video!');
 
 					break;
@@ -560,8 +595,8 @@ client.on('interactionCreate', async (interaction) => {
 						if (player.resource !== null) player.resource.volume.setVolume(player.volume);
 					}
 
-					responseCustomFormatting = true;
-					responseMessage = `**Volume:**\n[${'▬'.repeat(Math.round(player.volume * 5))}](https://youtu.be/dQw4w9WgXcQ)${'▬'.repeat(10 - Math.round(player.volume * 5))} \`${player.volume * 100}%\``;
+					response.customFormatting = true;
+					response.message = `**Volume:**\n[${'▬'.repeat(Math.round(player.volume * 5))}](https://youtu.be/dQw4w9WgXcQ)${'▬'.repeat(10 - Math.round(player.volume * 5))} \`${player.volume * 100}%\``;
 
 					break;
 				}
@@ -579,7 +614,7 @@ client.on('interactionCreate', async (interaction) => {
 					if (player.delayedAutoleave !== 0) throw new Error('PEBKAC:Autoleave was already delayed!');
 					player.delayedAutoleave = 1;
 
-					responseMessage = 'I\'ll stay in the voice channel alone 5 minutes longer. (sad lonely bot noises)';
+					response.message = 'I\'ll stay in the voice channel alone 5 minutes longer. (sad lonely bot noises)';
 
 					break;
 				}
@@ -601,6 +636,7 @@ client.on('interactionCreate', async (interaction) => {
 				}
 			}
 		} else if (interaction.isSelectMenu()) {
+			await interaction.deferReply();
 			switch (interaction.customId) {
 				case 'search': {
 					await connectToChannel(interaction);
@@ -612,10 +648,10 @@ client.on('interactionCreate', async (interaction) => {
 					checkConnection(interaction);
 					const position = await addToQueue([result], interaction.guild.id);
 
-					responseCustomFormatting = true;
-					responseTitle = position === 0 ? 'Now playing!' : `<:check:537885340304932875> Video has been added to the queue! (#${position})`;
-					responseMessage = `${parse.formatVideo(result)}`;
-					responseProps = {
+					response.customFormatting = true;
+					response.title = position === 0 ? 'Now playing!' : `<:check:537885340304932875> Video has been added to the queue! (#${position})`;
+					response.message = `${parse.formatVideo(result)}`;
+					response.customEmbedProperties = {
 						thumbnail: {
 							url: parse.getVideoThubnailURL(result.id),
 						},
@@ -640,27 +676,83 @@ client.on('interactionCreate', async (interaction) => {
 					});
 				}
 			}
+		} else if (interaction.isButton()) {
+			await interaction.deferUpdate();
+
+			const tokens = interaction.customId.split('-');
+			switch (tokens[0]) {
+				case 'queue': {
+					let generatedQueue;
+					if (tokens[1] === 'left') {
+						generatedQueue = generateQueue(interaction.guild.id, +tokens[2] - 1);
+					} else {
+						generatedQueue = generateQueue(interaction.guild.id, +tokens[2] + 1);
+					}
+					await interaction.editReply({
+						embeds: [
+							{
+								description: generatedQueue.formattedQueue,
+								color: 0x249e43,
+								author: {
+									name: client.user.username,
+									iconURL: client.user.displayAvatarURL(),
+								},
+								footer: {
+									iconURL: interaction.member.displayAvatarURL(),
+									text: `Page ${generatedQueue.pageIndex + 1}/${Math.floor(players[interaction.guild.id].queue.length / 10) + 1}`,
+								},
+							},
+						],
+						components: [
+							{
+								type: 'ACTION_ROW',
+								components: [
+									{
+										type: 'BUTTON',
+										customId: `queue-left-${generatedQueue.pageIndex}`,
+										label: '<',
+										style: 'PRIMARY',
+									}, {
+										type: 'BUTTON',
+										customId: `queue-right-${generatedQueue.pageIndex}`,
+										label: '>',
+										style: 'PRIMARY',
+									},
+								],
+							},
+						],
+					});
+					break;
+				}
+
+				default: {
+					break;
+				}
+			}
+
+			return;
 		}
 
-		if (responseProps.content) {
+		if (response.customProperties.ephemeral) {
 			await interaction.deleteReply();
 			interaction.followUp({
-				...responseProps,
+				...response.customProperties,
 			});
 		} else {
 			interaction.editReply({
 				embeds: [
 					{
-						title: responseTitle,
-						description: responseMessage.length !== 0 ? (responseCustomFormatting ? responseMessage : `<:check:537885340304932875> **${responseMessage}**`) : null,
+						title: response.title,
+						description: response.message.length !== 0 ? (response.customFormatting ? response.message : `<:check:537885340304932875> **${response.message}**`) : null,
 						color: 0x249e43,
 						author: {
 							name: client.user.username,
 							iconURL: client.user.displayAvatarURL(),
 						},
-						...responseProps,
+						...response.customEmbedProperties,
 					},
 				],
+				...response.customProperties,
 			});
 		}
 	} catch (error) {
