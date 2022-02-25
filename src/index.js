@@ -11,6 +11,7 @@ const download = require('youtube-dl-exec').exec;
 // https://github.com/discordjs/voice/tree/main/examples/music-bot/src/music
 /*
  * TODO:
+ * show duration in more places (and make queue total duration)
  * add filters (some)
  * maybe soundcloud support
  * turn this into a full-fledged bot (make a command handler and split this into files (make the player a class and put commands in separate files automagically loaded by a command handler) cuz 768 line js kinda sux and maybe rename the thing into sth else idk ~~maybe the NeverFindusBoT~~ ask marximimus about that)
@@ -368,6 +369,10 @@ client.on('interactionCreate', async (interaction) => {
 							thumbnail: {
 								url: result.thumbnailURL,
 							},
+							footer: {
+								iconURL: interaction.member.displayAvatarURL(),
+								text: `🔉 ${Math.round(players[interaction.guild.id].volume * 100)}% • Requested by: ${interaction.member.user.tag}`,
+							},
 						};
 					} else {
 						/**
@@ -382,6 +387,10 @@ client.on('interactionCreate', async (interaction) => {
 						response.customEmbedProperties = {
 							thumbnail: {
 								url: parse.getVideoThubnailURL(result.id),
+							},
+							footer: {
+								iconURL: interaction.member.displayAvatarURL(),
+								text: `🔉 ${Math.round(players[interaction.guild.id].volume * 100)}% • Requested by: ${interaction.member.user.tag}`,
 							},
 						};
 					}
@@ -654,6 +663,10 @@ client.on('interactionCreate', async (interaction) => {
 					response.customEmbedProperties = {
 						thumbnail: {
 							url: parse.getVideoThubnailURL(result.id),
+						},
+						footer: {
+							iconURL: interaction.member.displayAvatarURL(),
+							text: `🔉 ${Math.round(players[interaction.guild.id].volume * 100)}% • Requested by: ${interaction.member.user.tag}`,
 						},
 					};
 
