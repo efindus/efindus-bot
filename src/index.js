@@ -202,7 +202,7 @@ const connectToChannel = async (interaction) => {
 			leaving: false,
 			autoleaveTimeout: null,
 			delayedAutoleave: 0,
-			uid: Buffer.from(randomBytes(16)).toString('base64'),
+			creationTS: Date.now(),
 		};
 
 		// players[interaction.guild.id].player.on('error', error => {
@@ -507,12 +507,12 @@ client.on('interactionCreate', async (interaction) => {
 								components: [
 									{
 										type: 'BUTTON',
-										customId: `queue-left-${players[interaction.guild.id].uid}-${pageIndex}`,
+										customId: `queue-left-${players[interaction.guild.id].creationTS}-${pageIndex}`,
 										label: '<',
 										style: 'PRIMARY',
 									}, {
 										type: 'BUTTON',
-										customId: `queue-right-${players[interaction.guild.id].uid}-${pageIndex}`,
+										customId: `queue-right-${players[interaction.guild.id].creationTS}-${pageIndex}`,
 										label: '>',
 										style: 'PRIMARY',
 									},
@@ -719,7 +719,7 @@ client.on('interactionCreate', async (interaction) => {
 			switch (tokens[0]) {
 				case 'queue': {
 					if (!players[interaction.guild.id]) return;
-					if (tokens[2] !== players[interaction.guild.id].uid) return;
+					if (+tokens[2] !== players[interaction.guild.id].creationTS) return;
 					let generatedQueue;
 					if (tokens[1] === 'left') {
 						generatedQueue = generateQueue(interaction.guild.id, +tokens[3] - 1);
@@ -747,12 +747,12 @@ client.on('interactionCreate', async (interaction) => {
 								components: [
 									{
 										type: 'BUTTON',
-										customId: `queue-left-${players[interaction.guild.id].uid}-${generatedQueue.pageIndex}`,
+										customId: `queue-left-${players[interaction.guild.id].creationTS}-${generatedQueue.pageIndex}`,
 										label: '<',
 										style: 'PRIMARY',
 									}, {
 										type: 'BUTTON',
-										customId: `queue-right-${players[interaction.guild.id].uid}-${generatedQueue.pageIndex}`,
+										customId: `queue-right-${players[interaction.guild.id].creationTS}-${generatedQueue.pageIndex}`,
 										label: '>',
 										style: 'PRIMARY',
 									},
