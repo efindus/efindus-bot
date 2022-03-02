@@ -1,6 +1,5 @@
 require('dotenv').config();
 require('./utils/array');
-const { randomBytes } = require('crypto');
 const parse = require('./utils/parse');
 const { Client } = require('discord.js');
 const { entersState, joinVoiceChannel, createAudioPlayer, NoSubscriberBehavior, createAudioResource, VoiceConnectionStatus, AudioPlayerStatus } = require('@discordjs/voice');
@@ -9,15 +8,27 @@ const ytpl = require('ytpl');
 const ytsearch = require('youtube-sr').default;
 const download = require('youtube-dl-exec').exec;
 
-// https://github.com/discordjs/voice/tree/main/examples/music-bot/src/music
 /*
- * TODO:
+ * ROADMAP:
+ * make a models.js util with functions like generateQueue() and some from parse.js
+ * make Player class with all the functionality thats scattered around this file and add some WS error handling from https://github.com/discordjs/discord.js/blob/main/packages/voice/examples/music-bot/src/music/subscription.ts
+ * turn this into a full-fledged bot:
+ * - make a command handler that will load commands from files in commands/
+ * - rename the bot into NeverFindusBoT or sth else if I come up with anything
+ * - return to FindusBoT's version number, so the version at this point will be 4.0.1-beta, also at this point I should make an anounement on findus-news and add a readme.md and license (GPL-3)
  * show duration in more places (and make queue total duration)
- * add filters (some)
- * maybe soundcloud support
- * turn this into a full-fledged bot (make a command handler and split this into files (make the player a class and put commands in separate files automagically loaded by a command handler) cuz 768 line js kinda sux and maybe rename the thing into sth else idk ~~maybe the NeverFindusBoT~~ ask marximimus about that)
- * start utilizing the footer (like in the old play)
+ * think about making a /djcontrols command which would allow to perform various actions using buttons and selection menus (pause, resume, loop control etc)
+ * start utilizing the footer (like in the old play), after this rename old newFindusBot repo into NeverFindusBoT and switch to using that as a remote
+ * implement seek (mainly as a functionality to power filters)
+ * add /dev command (for now just /dev eval and /dev help), responses should be ephemeral and the command should only have one argument (a string) as it will be visible to everyone due to the way slash commands work
+ * add filters (from here: https://github.com/Androz2091/discord-player/blob/master/src/utils/AudioFilters.ts)
+ * aim for version 4.1.0 here
+ * more dev commands and random utility ones like poll, rng etc.
+ * 4.2.0 here
+ * soundcloud support
+ * 4.3.0 here
  * (reminder for the future) bump version
+ * https://github.com/discordjs/discord.js/blob/main/packages/voice/examples/music-bot/src/music
  */
 
 const client = new Client({
