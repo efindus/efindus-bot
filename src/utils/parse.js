@@ -2,25 +2,6 @@ const URL = require('url');
 const time = require('./time');
 
 /**
- * Generate text with video name, author and duration hyperlinked to YouTube
- * @param {import('../index').QueueVideo} queueVideo - Video to represent
- * @returns {string} Formatted text
- */
-exports.formatVideo = (queueVideo) => {
-	return this.formatVideoWithProgress(queueVideo, null);
-};
-
-/**
- * Generate text with video name, author, duration and progress hyperlinked to YouTube
- * @param {import('../index').QueueVideo} queueVideo - Video to represent
- * @param {number | null} progressMS - Current playback position in MS
- * @returns {string} Formatted text
- */
-exports.formatVideoWithProgress = (queueVideo, progressMS) => {
-	return `[${queueVideo.title} [${progressMS ? `${time.formatMS(progressMS)}/` : ''}${time.formatMS(queueVideo.duration)}]](${this.getVideoURL(queueVideo.id)}) by **${queueVideo.author}**`;
-};
-
-/**
  * Turn a video object returned by any of the libraries into a standardized QueueVideo object
  * @param {import('ytsr').Video | import('ytpl').Item | import('youtube-sr').Video} rawVideo - Video object to standardize
  * @returns {import('../index').QueueVideo} Parsed video object

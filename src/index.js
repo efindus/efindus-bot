@@ -1,6 +1,7 @@
 require('dotenv').config();
 require('./utils/array');
 const parse = require('./utils/parse');
+const models = require('./utils/models');
 const { Client } = require('discord.js');
 const { entersState, joinVoiceChannel, createAudioPlayer, NoSubscriberBehavior, createAudioResource, VoiceConnectionStatus, AudioPlayerStatus } = require('@discordjs/voice');
 const ytsr = require('ytsr');
@@ -10,10 +11,10 @@ const download = require('youtube-dl-exec').exec;
 
 /*
  * ROADMAP:
- * make a models.js util with functions like generateQueue() and some from parse.js
  * make Player class with all the functionality thats scattered around this file and add some WS error handling from https://github.com/discordjs/discord.js/blob/main/packages/voice/examples/music-bot/src/music/subscription.ts
  * turn this into a full-fledged bot:
  * - make a command handler that will load commands from files in commands/
+ * - add embed models into models.js
  * - rename the bot into NeverFindusBoT or sth else if I come up with anything
  * - return to FindusBoT's version number, so the version at this point will be 4.0.1-beta, also at this point I should make an anounement on findus-news and add a readme.md and license (GPL-3)
  * show duration in more places (and make queue total duration)
@@ -333,27 +334,6 @@ const leave = (interaction) => {
 	delete players[interaction.guild.id];
 };
 
-const generateQueue = (guildId, pageIndex) => {
-	if (pageIndex < 0) pageIndex = 0;
-	const player = players[guildId];
-	let formattedQueue = '';
-
-	if (player.nowPlaying !== null) formattedQueue += `:play_pause: **Currently playing${player.loopType === 0 ? '' : ` [loop: ${player.loopType === 1 ? 'video' : 'queue'}]`}:**\n**[0]** ${parse.formatVideoWithProgress(player.nowPlaying, player.player.state.playbackDuration)}\n\n`;
-
-	if (player.queue.length < pageIndex * 10) pageIndex = Math.floor(player.queue.length / 10);
-	if (player.queue.length !== 0) {
-		formattedQueue += `:notepad_spiral: **Current queue [${player.queue.length}]:**\n`;
-		for (let i = pageIndex * 10; i < Math.min(player.queue.length, (pageIndex + 1) * 10); i++) {
-			formattedQueue += `**[${i + 1}]** ${parse.formatVideo(player.queue[i])}\n`;
-		}
-	}
-
-	return {
-		formattedQueue,
-		pageIndex,
-	};
-};
-
 client.on('interactionCreate', async (interaction) => {
 	if (!interaction.guild) return;
 
@@ -404,7 +384,7 @@ client.on('interactionCreate', async (interaction) => {
 
 						response.customFormatting = true;
 						response.title = position === 0 ? 'Now playing!' : `<:check:537885340304932875> Video has been added to the queue! (#${position})`;
-						response.message = `${parse.formatVideo(result)}`;
+						response.message = `${models.formatVideo(result)}`;
 						response.customEmbedProperties = {
 							thumbnail: {
 								url: parse.getVideoThubnailURL(result.id),
@@ -475,7 +455,7 @@ client.on('interactionCreate', async (interaction) => {
 							await play(interaction.guild.id);
 
 							response.customFormatting = true;
-							response.message = `<:check:537885340304932875> ${parse.formatVideo(removed)} ${amount > 1 ? `and ${amount - 1} more video${amount - 1 === 1 ? '' : 's'} have` : 'has'} been skipped!`;
+							response.message = `<:check:537885340304932875> ${models.formatVideo(removed)} ${amount > 1 ? `and ${amount - 1} more video${amount - 1 === 1 ? '' : 's'} have` : 'has'} been skipped!`;
 						}
 					} else {
 						const queue = players[interaction.guild.id].queue;
@@ -484,7 +464,7 @@ client.on('interactionCreate', async (interaction) => {
 						else {
 							const removed = queue.splice(index - 1, amount)[0];
 							response.customFormatting = true;
-							response.message = `<:check:537885340304932875> ${parse.formatVideo(removed)} ${amount > 1 ? `and ${amount - 1} more video${amount - 1 === 1 ? '' : 's'} have` : 'has'} been skipped!`;
+							response.message = `<:check:537885340304932875> ${models.formatVideo(removed)} ${amount > 1 ? `and ${amount - 1} more video${amount - 1 === 1 ? '' : 's'} have` : 'has'} been skipped!`;
 						}
 					}
 
@@ -495,7 +475,7 @@ client.on('interactionCreate', async (interaction) => {
 					checkConnection(interaction, true);
 					const pageIndex = (interaction.options.getInteger('page') ?? 1) - 1;
 					if (pageIndex < 0 || pageIndex > Math.floor(players[interaction.guild.id].queue.length / 10)) throw new Error('PEBKAC:Invalid page number!');
-					const { formattedQueue } = generateQueue(interaction.guild.id, pageIndex);
+					const { formattedQueue } = models.formatQueue(players[interaction.guild.id], pageIndex);
 					if (formattedQueue.length === 0) throw new Error('PEBKAC:Nothing is currently playing!');
 
 					response.customFormatting = true;
@@ -682,7 +662,7 @@ client.on('interactionCreate', async (interaction) => {
 
 					response.customFormatting = true;
 					response.title = position === 0 ? 'Now playing!' : `<:check:537885340304932875> Video has been added to the queue! (#${position})`;
-					response.message = `${parse.formatVideo(result)}`;
+					response.message = `${models.formatVideo(result)}`;
 					response.customEmbedProperties = {
 						thumbnail: {
 							url: parse.getVideoThubnailURL(result.id),
@@ -722,9 +702,9 @@ client.on('interactionCreate', async (interaction) => {
 					if (+tokens[2] !== players[interaction.guild.id].creationTS) return;
 					let generatedQueue;
 					if (tokens[1] === 'left') {
-						generatedQueue = generateQueue(interaction.guild.id, +tokens[3] - 1);
+						generatedQueue = models.formatQueue(players[interaction.guild.id], +tokens[3] - 1);
 					} else {
-						generatedQueue = generateQueue(interaction.guild.id, +tokens[3] + 1);
+						generatedQueue = models.formatQueue(players[interaction.guild.id], +tokens[3] + 1);
 					}
 					await interaction.editReply({
 						embeds: [
