@@ -1,7 +1,7 @@
 require('dotenv').config();
-require('./utils/array');
-const parse = require('./utils/parse');
-const models = require('./utils/models');
+require('./utils/array.util');
+const parse = require('./utils/parse.util');
+const models = require('./utils/models.util');
 const { Client } = require('discord.js');
 const { entersState, joinVoiceChannel, createAudioPlayer, NoSubscriberBehavior, createAudioResource, VoiceConnectionStatus, AudioPlayerStatus } = require('@discordjs/voice');
 const ytsr = require('ytsr');
