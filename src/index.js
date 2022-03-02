@@ -2,11 +2,9 @@ require('dotenv').config();
 require('./utils/array.util');
 const parse = require('./utils/parse.util');
 const models = require('./utils/models.util');
+const yt = require('./utils/youtube.util');
 const { Client } = require('discord.js');
-const { entersState, joinVoiceChannel, createAudioPlayer, NoSubscriberBehavior, createAudioResource, VoiceConnectionStatus, AudioPlayerStatus } = require('@discordjs/voice');
-const ytsr = require('ytsr');
-const ytpl = require('ytpl');
-const ytsearch = require('youtube-sr').default;
+const { entersState, joinVoiceChannel, createAudioPlayer, createAudioResource, NoSubscriberBehavior, VoiceConnectionStatus, AudioPlayerStatus } = require('@discordjs/voice');
 const download = require('youtube-dl-exec').exec;
 
 /*
@@ -259,42 +257,6 @@ const addToQueue = async (videos, guildId, requestedPosition = null) => {
 	return queueIndex;
 };
 
-/**
- * Find videos.
- * @param {string} title - Video's title.
- * @param {number} limit - Number of videos to find.
- * @returns {Promise<import('./index').PlaylistResult | import('./index').QueueVideo | import('./index').QueueVideo[]>} Videos.
- */
-const findVideos = async (query, limit) => {
-	let url = query.trim(), playlist = false;
-
-	const videoID = parse.getVideoID(url);
-	if (videoID) url = parse.getVideoURL(videoID);
-	else if (url.startsWith('https://www.youtube.com/')) playlist = true;
-	else {
-		url = (await ytsr.getFilters(url)).get('Type').get('Video').url;
-
-		if (!url) throw new Error('PEBKAC:Video could not be found.');
-	}
-
-	if (playlist && limit === 1) {
-		try {
-			return parse.getPlaylistResult(await ytpl(url, { limit: 200 }));
-		} catch (error) {
-			throw new Error('PEBKAC:Unknown playlist!');
-		}
-	} else {
-		if (limit !== 1 || url.startsWith('https://www.youtube.com/results')) {
-			const results = await ytsr(url, { limit: limit });
-			if (results.items.length === 0) throw new Error('PEBKAC:Video could not be found.');
-
-			return limit === 1 ? parse.getQueueVideo(results.items[0]) : results.items.map(item => parse.getQueueVideo(item));
-		} else {
-			return parse.getQueueVideo(await ytsearch.getVideo(url));
-		}
-	}
-};
-
 const play = async (guildId) => {
 	if (players[guildId].nowPlaying || players[guildId].queue.length === 0) return;
 
@@ -352,7 +314,7 @@ client.on('interactionCreate', async (interaction) => {
 				case 'play': {
 					await connectToChannel(interaction);
 
-					const results = await findVideos(interaction.options.getString('query'), 1), requestedPosition = interaction.options.getInteger('position');
+					const results = await yt.findVideos(interaction.options.getString('query'), 1), requestedPosition = interaction.options.getInteger('position');
 					checkConnection(interaction);
 
 					if (requestedPosition < 0 || requestedPosition > players[interaction.guild.id].queue.length) throw new Error('PEBKAC:Invalid position requested!');
@@ -405,7 +367,7 @@ client.on('interactionCreate', async (interaction) => {
 					/**
 					 * @type {import('./index').QueueVideo[]}
 					 */
-					const results = await findVideos(interaction.options.getString('query'), 10);
+					const results = await yt.findVideos(interaction.options.getString('query'), 10);
 
 					const videos = [];
 
@@ -656,7 +618,7 @@ client.on('interactionCreate', async (interaction) => {
 					/**
 					 * @type {import('./index').QueueVideo}
 					 */
-					const result = (await findVideos(interaction.values[0], 1));
+					const result = (await yt.findVideos(interaction.values[0], 1));
 					checkConnection(interaction);
 					const position = await addToQueue([result], interaction.guild.id);
 
