@@ -5,7 +5,7 @@
 exports.getMS = (input) => {
 	const parts = input.split(':');
 	let result = 0, ratio = 1000;
-	while(parts.length > 0 && ratio <= 1000 * 60 * 60) {
+	while (parts.length > 0 && ratio <= 1000 * 60 * 60) {
 		result += (+parts.pop()) * ratio;
 		ratio *= 60;
 	}
@@ -30,4 +30,12 @@ exports.formatMS = (input) => {
 	result += `${seconds.padStart(2, '0')}`;
 
 	return result;
+};
+
+/**
+ * Delay program execution by delay miliseconds
+ * @param {number} delay - Number of miliseconds to delay execution for
+ */
+exports.wait = async (delay) => {
+	await new Promise(res => setTimeout(res, delay));
 };

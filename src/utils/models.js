@@ -1,5 +1,5 @@
-const time = require('./time.util');
-const parse = require('./parse.util');
+const time = require('./time');
+const parse = require('./parse');
 
 /**
  * Generate text with video name, author and duration hyperlinked to YouTube

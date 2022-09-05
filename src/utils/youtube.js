@@ -1,4 +1,4 @@
-const parse = require('./parse.util');
+const parse = require('./parse');
 const ytsr = require('ytsr');
 const ytpl = require('ytpl');
 const youtubesr = require('youtube-sr').default;

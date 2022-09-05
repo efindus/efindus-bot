@@ -1,5 +1,5 @@
 const URL = require('url');
-const time = require('./time.util');
+const time = require('./time');
 
 /**
  * Turn a video object returned by any of the libraries into a standardized QueueVideo object
