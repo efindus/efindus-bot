@@ -52,7 +52,13 @@
 			"error",
 			"inside"
 		],
-		"yoda": "warn",
+		"yoda": [
+			"warn",
+			"never",
+			{
+				"exceptRange": true
+			}
+		],
 		"array-bracket-spacing": [
 			"error",
 			"always"

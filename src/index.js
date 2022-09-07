@@ -1,7 +1,5 @@
 require('dotenv').config();
-const { Client, GatewayIntentBits } = require('discord.js');
-const { entersState, joinVoiceChannel, createAudioPlayer, createAudioResource, NoSubscriberBehavior, VoiceConnectionStatus, AudioPlayerStatus } = require('@discordjs/voice');
-const download = require('youtube-dl-exec').exec;
+const { Client, GatewayIntentBits, ApplicationCommandOptionType, ActivityType, ComponentType, ButtonStyle } = require('discord.js');
 
 require('./utils/array');
 const parse = require('./utils/parse');
@@ -10,6 +8,10 @@ const yt = require('./utils/youtube');
 const { logger } = require('./utils/logger');
 const { PlayerManager } = require('./modules/playermanager');
 const { UserError } = require('./utils/errors');
+
+// FIXME: fix queue showing extra empty page when there are eg. 10 videos
+// FIXME: try using @discordjs/opus instead of opusscript
+// FIXME: autoleave (https://discord.com/channels/640088902526566400/756621847151378432/1017203654450753577)
 
 /*
  * ROADMAP:
@@ -39,7 +41,7 @@ const client = new Client({
 	],
 	ws: {
 		properties: {
-			$browser: 'Discord iOS',
+			browser: 'Discord Android',
 		},
 	},
 });
@@ -51,114 +53,141 @@ client.on('ready', () => {
 		{
 			name: 'play',
 			description: 'Add a video to the queue.',
+			dmPermission: false,
 			options: [
 				{
 					name: 'query',
-					type: 'STRING',
+					type: ApplicationCommandOptionType.String,
 					description: 'Video\'s title.',
 					required: true,
-				}, {
+				},
+				{
 					name: 'position',
-					type: 'INTEGER',
+					type: ApplicationCommandOptionType.Integer,
 					description: 'Index in the queue before which the video is going to be added. 0 will replace currently played one.',
 					required: false,
 				},
 			],
-		}, {
+		},
+		{
 			name: 'skip',
 			description: 'Skip a video.',
+			dmPermission: false,
 			options: [
 				{
 					name: 'position',
-					type: 'INTEGER',
+					type: ApplicationCommandOptionType.Integer,
 					description: 'Video\'s position in the queue.',
 					required: false,
-				}, {
+				},
+				{
 					name: 'amount',
-					type: 'INTEGER',
+					type: ApplicationCommandOptionType.Integer,
 					description: 'Amount of videos to remove.',
 					required: false,
 				},
 			],
-		}, {
+		},
+		{
 			name: 'queue',
 			description: 'Display the queue.',
+			dmPermission: false,
 			options: [
 				{
 					name: 'page',
-					type: 'INTEGER',
+					type: ApplicationCommandOptionType.Integer,
 					description: 'Number of page in queue to show.',
 					required: false,
 				},
 			],
-		}, {
+		},
+		{
 			name: 'clear',
 			description: 'Clear the queue.',
-		}, {
+			dmPermission: false,
+		},
+		{
 			name: 'leave',
 			description: 'Leave the voice channel.',
-		}, {
+			dmPermission: false,
+		},
+		{
 			name: 'search',
 			description: 'Search a video on YouTube and add it to the queue.',
+			dmPermission: false,
 			options: [
 				{
 					name: 'query',
-					type: 'STRING',
+					type: ApplicationCommandOptionType.String,
 					description: 'Video\'s title.',
 					required: true,
 				},
 			],
-		}, {
+		},
+		{
 			name: 'pause',
+			dmPermission: false,
 			description: 'Pause the video.',
-		}, {
+		},
+		{
 			name: 'resume',
+			dmPermission: false,
 			description: 'Resume the video.',
-		}, {
+		},
+		{
 			name: 'loop',
 			description: 'Loop the video or the queue.',
+			dmPermission: false,
 			options: [
 				{
 					name: 'type',
-					type: 'STRING',
+					type: ApplicationCommandOptionType.String,
 					description: 'Loop type (defaults to video)',
 					required: false,
 					choices: [
 						{
 							name: 'disable',
 							value: 'none',
-						}, {
+						},
+						{
 							name: 'queue',
 							value: 'queue',
-						}, {
+						},
+						{
 							name: 'video',
 							value: 'single',
 						},
 					],
 				},
 			],
-		}, {
+		},
+		{
 			name: 'volume',
 			description: 'Change the volume.',
+			dmPermission: false,
 			options: [
 				{
 					name: 'volume',
-					type: 'INTEGER',
+					type: ApplicationCommandOptionType.Integer,
 					description: 'New volume.',
 					required: false,
 				},
 			],
-		}, {
+		},
+		{
 			name: 'shuffle',
 			description: 'Shuffle the queue.',
-		}, {
+			dmPermission: false,
+		},
+		{
 			name: 'delayautoleave',
 			description: 'Add 5 minutes to the autoleave timer. Only one-time use.',
+			dmPermission: false,
 		},
 	]);
 
 	client.user.setActivity({
-		type: 'PLAYING',
+		type: ActivityType.Playing,
 		name: 'with slash commands!',
 	});
 
@@ -171,11 +200,11 @@ client.on('ready', () => {
  * @param {boolean} weak - Allow users not connected to the VC
  */
 const checkConnection = (interaction, weak = false) => {
-	if (!interaction.guild.me.voice.channel || !playerManager.getPlayer(interaction.guild.id))
+	if (!interaction.guild.members.me.voice.channel || !playerManager.getPlayer(interaction.guild.id))
 		throw new UserError('I\'m not connected to any voice channel on this server.');
 
-	if (!weak && interaction.member.voice.channelId !== interaction.guild.me.voice.channelId)
-		throw new UserError(`You're not connected to <#${interaction.guild.me.voice.channelId}>`);
+	if (!weak && interaction.member.voice.channelId !== interaction.guild.members.me.voice.channelId)
+		throw new UserError(`You're not connected to <#${interaction.guild.members.me.voice.channelId}>`);
 };
 
 client.on('interactionCreate', async (interaction) => {
@@ -190,16 +219,21 @@ client.on('interactionCreate', async (interaction) => {
 			customEmbedProperties: {},
 		};
 
-		if (interaction.isCommand()) {
+		if (interaction.isButton())
+			await interaction.deferUpdate();
+		else
 			await interaction.deferReply();
+
+		const player = await playerManager.connect(interaction.member);
+		if (interaction.isCommand()) {
 			switch (interaction.commandName) {
 				case 'play': {
-					const player = await playerManager.connect(interaction.member);
-
 					const results = await yt.findVideos(interaction.options.getString('query'), 1), requestedPosition = interaction.options.getInteger('position');
 					checkConnection(interaction);
 
-					if (requestedPosition < 0 || requestedPosition > player.queue.length) throw new UserError('Invalid position requested!');
+					if (requestedPosition < 0 || player.queueLength < requestedPosition)
+						throw new UserError('Invalid position requested!');
+
 					if (results.videos) {
 						/**
 						 * @type {import('./index').PlaylistResult}
@@ -244,8 +278,6 @@ client.on('interactionCreate', async (interaction) => {
 				}
 
 				case 'search': {
-					await playerManager.connect(interaction.member);
-
 					/**
 					 * @type {import('./index').QueueVideo[]}
 					 */
@@ -265,10 +297,10 @@ client.on('interactionCreate', async (interaction) => {
 						content: '**Select a video:**',
 						components: [
 							{
-								type: 'ACTION_ROW',
+								type: ComponentType.ActionRow,
 								components: [
 									{
-										type: 'SELECT_MENU',
+										type: ComponentType.SelectMenu,
 										customId: 'search',
 										placeholder: 'Select a video',
 										options: videos,
@@ -286,7 +318,6 @@ client.on('interactionCreate', async (interaction) => {
 					checkConnection(interaction);
 
 					const index = interaction.options.getInteger('position'), amount = interaction.options.getInteger('amount') ?? 1;
-					const player = playerManager.getPlayer(interaction.guild.id);
 
 					const removed = await player.skip(index, amount);
 					response.customFormatting = true;
@@ -297,28 +328,33 @@ client.on('interactionCreate', async (interaction) => {
 
 				case 'queue': {
 					checkConnection(interaction, true);
+
 					const pageIndex = (interaction.options.getInteger('page') ?? 1) - 1;
-					if (pageIndex < 0 || pageIndex > Math.floor(players[interaction.guild.id].queue.length / 10)) throw new UserError('Invalid page number!');
-					const { formattedQueue } = models.formatQueue(players[interaction.guild.id], pageIndex);
-					if (formattedQueue.length === 0) throw new UserError('Nothing is currently playing!');
+					if (pageIndex < 0 || Math.floor(player.queueLength / 10) < pageIndex)
+						throw new UserError('Invalid page number!');
+
+					const { formattedQueue } = models.formatQueue(player, pageIndex);
+					if (formattedQueue.length === 0)
+						throw new UserError('Nothing is currently playing!');
 
 					response.customFormatting = true;
 					response.message = formattedQueue;
 					response.customProperties = {
 						components: [
 							{
-								type: 'ACTION_ROW',
+								type: ComponentType.ActionRow,
 								components: [
 									{
-										type: 'BUTTON',
-										customId: `queue-left-${players[interaction.guild.id].creationTS}-${pageIndex}`,
+										type: ComponentType.Button,
+										customId: `queue-left-${player.creationTS}-${pageIndex}`,
 										label: '<',
-										style: 'PRIMARY',
-									}, {
-										type: 'BUTTON',
-										customId: `queue-right-${players[interaction.guild.id].creationTS}-${pageIndex}`,
+										style: ButtonStyle.Primary,
+									},
+									{
+										type: ComponentType.Button,
+										customId: `queue-right-${player.creationTS}-${pageIndex}`,
 										label: '>',
-										style: 'PRIMARY',
+										style: ButtonStyle.Primary,
 									},
 								],
 							},
@@ -327,7 +363,7 @@ client.on('interactionCreate', async (interaction) => {
 					response.customEmbedProperties = {
 						footer: {
 							iconURL: interaction.member.displayAvatarURL(),
-							text: `Page ${pageIndex + 1}/${Math.floor(players[interaction.guild.id].queue.length / 10) + 1}`,
+							text: `Page ${pageIndex + 1}/${Math.floor(player.queueLength / 10) + 1}`,
 						},
 					};
 
@@ -336,31 +372,32 @@ client.on('interactionCreate', async (interaction) => {
 
 				case 'clear': {
 					checkConnection(interaction);
-					const player = players[interaction.guild.id];
 
-					if (player.queue.length === 0) throw new UserError('The queue is empty!');
-					else {
-						player.queue = [];
+					if (player.queueLength === 0) {
+						throw new UserError('The queue is empty!');
+					} else {
+						player.clearQueue();
 						response.message = 'Cleared the queue!';
 					}
+
 					break;
 				}
 
 				case 'shuffle': {
 					checkConnection(interaction);
-					const player = players[interaction.guild.id];
 
-					if (player.queue.length === 0) throw new UserError('The queue is empty!');
-					else {
-						player.queue.shuffle();
+					if (player.queueLength === 0) {
+						throw new UserError('The queue is empty!');
+					} else {
+						player.shuffleQueue();
 						response.message = 'Shuffled the queue!';
 					}
+
 					break;
 				}
 
 				case 'loop': {
 					checkConnection(interaction);
-					const player = players[interaction.guild.id];
 
 					switch (interaction.options.getString('type')) {
 						case 'none': {
@@ -387,48 +424,56 @@ client.on('interactionCreate', async (interaction) => {
 
 				case 'leave': {
 					checkConnection(interaction);
-					leave(interaction);
 
+					playerManager.leave(interaction.guild.id);
 					response.message = 'Successfully left the voice channel!';
+
 					break;
 				}
 
 				case 'pause': {
 					checkConnection(interaction);
-					const player = players[interaction.guild.id];
 
-					if (player.nowPlaying === null) throw new UserError('Nothing is currently playing!');
+					if (player.nowPlaying === null)
+						throw new UserError('Nothing is currently playing!');
 
-					if (player.player.state.status === AudioPlayerStatus.Paused) throw new UserError('The video is already paused!');
+					if (player.isPaused)
+						throw new UserError('The video is already paused!');
 
-					if (player.player.pause()) response.message = 'Paused the video!';
-					else throw new UserError('Failed to pause the video!');
+					if (player.pause())
+						response.message = 'Paused the video!';
+					else
+						throw new UserError('Failed to pause the video!');
 
 					break;
 				}
 
 				case 'resume': {
 					checkConnection(interaction);
-					const player = players[interaction.guild.id];
 
-					if (player.nowPlaying === null) throw new UserError('Nothing is currently playing!');
+					if (player.nowPlaying === null)
+						throw new UserError('Nothing is currently playing!');
 
-					if (player.player.state.status !== AudioPlayerStatus.Paused) throw new UserError('The video isn\'t paused!');
+					if (!player.isPaused)
+						throw new UserError('The video isn\'t paused!');
 
-					if (player.player.unpause()) response.message = 'Resumed the video!';
-					else throw new UserError('Failed to resume the video!');
+					if (player.resume())
+						response.message = 'Resumed the video!';
+					else
+						throw new UserError('Failed to resume the video!');
 
 					break;
 				}
 
 				case 'volume': {
 					checkConnection(interaction);
-					const player = players[interaction.guild.id], newVolume = interaction.options.getInteger('volume');
+					const newVolume = interaction.options.getInteger('volume');
 
 					if (newVolume !== null) {
-						if (newVolume < 0 || newVolume > 200) throw new UserError('Invalid volume! Available range: 0-200%');
-						player.volume = newVolume / 100;
-						if (player.resource !== null) player.resource.volume.setVolume(player.volume);
+						if (newVolume < 0 || 200 < newVolume)
+							throw new UserError('Invalid volume! Available range: 0-200%');
+
+						player.setVolume(newVolume / 100);
 					}
 
 					response.customFormatting = true;
@@ -438,18 +483,18 @@ client.on('interactionCreate', async (interaction) => {
 				}
 
 				case 'delayautoleave': {
-					const player = players[interaction.guild.id];
-
-					if (!player) checkConnection(interaction);
+					if (!player)
+						checkConnection(interaction);
 
 					if (player.autoleaveTimeout === null) {
 						checkConnection(interaction);
 						throw new UserError('I\'m not currently autoleaving!');
 					}
 
-					if (player.delayedAutoleave !== 0) throw new UserError('Autoleave was already delayed!');
-					player.delayedAutoleave = 1;
+					if (player.delayedAutoleave !== 0)
+						throw new UserError('Autoleave was already delayed!');
 
+					player.delayedAutoleave = 1;
 					response.message = 'I\'ll stay in the voice channel alone 5 minutes longer. (sad lonely bot noises)';
 
 					break;
@@ -472,17 +517,15 @@ client.on('interactionCreate', async (interaction) => {
 				}
 			}
 		} else if (interaction.isSelectMenu()) {
-			await interaction.deferReply();
 			switch (interaction.customId) {
 				case 'search': {
-					await connectToChannel(interaction);
-
 					/**
 					 * @type {import('./index').QueueVideo}
 					 */
-					const result = (await yt.findVideos(interaction.values[0], 1));
+					const result = await yt.findVideos(interaction.values[0], 1);
 					checkConnection(interaction);
-					const position = await addToQueue([ result ], interaction.guild.id);
+
+					const position = await player.addToQueue([ result ]);
 
 					response.customFormatting = true;
 					response.title = position === 0 ? 'Now playing!' : `<:check:537885340304932875> Video has been added to the queue! (#${position})`;
@@ -493,7 +536,7 @@ client.on('interactionCreate', async (interaction) => {
 						},
 						footer: {
 							iconURL: interaction.member.displayAvatarURL(),
-							text: `🔉 ${Math.round(players[interaction.guild.id].volume * 100)}% • Requested by: ${interaction.member.user.tag}`,
+							text: `🔉 ${Math.round(player.volume * 100)}% • Requested by: ${interaction.member.user.tag}`,
 						},
 					};
 
@@ -517,19 +560,18 @@ client.on('interactionCreate', async (interaction) => {
 				}
 			}
 		} else if (interaction.isButton()) {
-			await interaction.deferUpdate();
-
 			const tokens = interaction.customId.split('-');
 			switch (tokens[0]) {
 				case 'queue': {
-					if (!players[interaction.guild.id]) return;
-					if (+tokens[2] !== players[interaction.guild.id].creationTS) return;
+					if (!player || +tokens[2] !== player.creationTS)
+						return;
+
 					let generatedQueue;
-					if (tokens[1] === 'left') {
-						generatedQueue = models.formatQueue(players[interaction.guild.id], +tokens[3] - 1);
-					} else {
-						generatedQueue = models.formatQueue(players[interaction.guild.id], +tokens[3] + 1);
-					}
+					if (tokens[1] === 'left')
+						generatedQueue = models.formatQueue(player, +tokens[3] - 1);
+					else
+						generatedQueue = models.formatQueue(player, +tokens[3] + 1);
+
 					await interaction.editReply({
 						embeds: [
 							{
@@ -541,35 +583,35 @@ client.on('interactionCreate', async (interaction) => {
 								},
 								footer: {
 									iconURL: interaction.member.displayAvatarURL(),
-									text: `Page ${generatedQueue.pageIndex + 1}/${Math.floor(players[interaction.guild.id].queue.length / 10) + 1}`,
+									text: `Page ${generatedQueue.pageIndex + 1}/${Math.floor(player.queue.length / 10) + 1}`,
 								},
 							},
 						],
 						components: [
 							{
-								type: 'ACTION_ROW',
+								type: ComponentType.ActionRow,
 								components: [
 									{
-										type: 'BUTTON',
-										customId: `queue-left-${players[interaction.guild.id].creationTS}-${generatedQueue.pageIndex}`,
+										type: ComponentType.Button,
+										customId: `queue-left-${player.creationTS}-${generatedQueue.pageIndex}`,
 										label: '<',
-										style: 'PRIMARY',
-									}, {
-										type: 'BUTTON',
-										customId: `queue-right-${players[interaction.guild.id].creationTS}-${generatedQueue.pageIndex}`,
+										style: ButtonStyle.Primary,
+									},
+									{
+										type: ComponentType.Button,
+										customId: `queue-right-${player.creationTS}-${generatedQueue.pageIndex}`,
 										label: '>',
-										style: 'PRIMARY',
+										style: ButtonStyle.Primary,
 									},
 								],
 							},
 						],
 					});
+
 					break;
 				}
 
-				default: {
-					break;
-				}
+				default: break;
 			}
 
 			return;
@@ -598,8 +640,10 @@ client.on('interactionCreate', async (interaction) => {
 			});
 		}
 	} catch (error) {
-		if (!error.message || !error.message.startsWith('PEBKAC:')) console.log(error);
-		else error.message = error.message.replace('PEBKAC:', '');
+		if (!(error instanceof UserError)) {
+			logger.error(error.stack ?? error.message);
+			error.message = 'An unexpected error occured. Please notify @Findus#7449';
+		}
 
 		interaction.editReply({
 			embeds: [
@@ -617,11 +661,11 @@ client.on('interactionCreate', async (interaction) => {
 });
 
 process.on('uncaughtException', error => {
-	console.log(error);
+	logger.error(error.stack ?? error.message);
 });
 
 process.on('unhandledRejection', error => {
-	console.log(error);
+	logger.error(error.stack ?? error.message);
 });
 
 client.login(process.env.TOKEN);

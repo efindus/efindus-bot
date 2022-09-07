@@ -1,4 +1,4 @@
-const { entersState, createAudioPlayer, createAudioResource, demuxProbe, NoSubscriberBehavior, VoiceConnectionStatus, VoiceConnectionDisconnectReason } = require('@discordjs/voice');
+const { entersState, createAudioPlayer, createAudioResource, demuxProbe, NoSubscriberBehavior, VoiceConnectionStatus, VoiceConnectionDisconnectReason, AudioPlayerStatus } = require('@discordjs/voice');
 const youtubedl = require('youtube-dl-exec').exec;
 
 const parse = require('../utils/parse');
@@ -91,26 +91,84 @@ class Player {
 		// just initialize
 	};
 
+	/**
+	 * Shows whether the player is paused or not
+	 */
+	get isPaused() {
+		return this.#player.state === AudioPlayerStatus.Paused;
+	}
+
+	/**
+	 * Shows the lenght of the queue
+	 */
+	get queueLength() {
+		return this.#queue.length;
+	}
+
+	/**
+	 * Player playtime duration
+	 */
+	get playtimeDuration() {
+		return this.#player.state?.playbackDuration ?? 0;
+	}
+
+	get loopType() {
+		return this.#loopType;
+	}
+
+	/**
+	 * Sets loop type
+	 * @param {0 | 1 | 2} newLoopType - 0 -> no loop; 1 -> single video loop; 2 -> queue loop
+	 */
+	set loopType(newLoopType) {
+		this.#loopType = newLoopType;
+	}
+
+	/**
+	 * Returns volume as a number from 0 to 2
+	 */
+	get volume() {
+		return this.#volume;
+	}
+
+	/**
+	 * Shows whether leaving was intended by the bot
+	 */
 	get isLeaving() {
 		return this.#isLeaving;
 	}
 
+	/**
+	 * ID of the VC the bot is connected to
+	 */
 	get channelId() {
 		return this.#channelId;
 	}
 
+	/**
+	 * ID of the VC the bot is connected to
+	 */
 	set channelId(newChannelId) {
 		this.#channelId = newChannelId;
 	}
 
+	/**
+	 * Player creation timestamp
+	 */
 	get creationTS() {
 		return this.#creationTS;
 	}
 
+	/**
+	 * Currently played video
+	 */
 	get nowPlaying() {
 		return this.#nowPlaying;
 	}
 
+	/**
+	 * Queue of upcoming videos
+	 */
 	get queue() {
 		return this.#queue;
 	}
@@ -147,25 +205,19 @@ class Player {
 						await entersState(this.#connection, VoiceConnectionStatus.Connecting, 5 * 1000);
 						// Probably moved voice channel
 					} catch {
-						this.#connection.destroy();
 						// Probably removed from voice channel
+						this.#connection.destroy();
 					}
 				} else if (this.#connection.rejoinAttempts < 5) {
-					/**
-					 * The disconnect in this case is recoverable, and we also have <5 repeated attempts so we will reconnect.
-					 */
-					await time.wait((this.#connection.rejoinAttempts + 1) * (5 * 1000));
+					// The disconnect in this case is recoverable, and we also have <5 repeated attempts so we will reconnect.
+					await time.wait((this.#connection.rejoinAttempts + 1) * (5_000));
 					this.#connection.rejoin();
 				} else {
-					/**
-					 * The disconnect in this case may be recoverable, but we have no more remaining attempts - destroy.
-					 */
+					// The disconnect in this case may be recoverable, but we have no more remaining attempts - destroy.
 					this.#connection.destroy();
 				}
 			} else if (newState.status === VoiceConnectionStatus.Destroyed) {
-				/**
-				 * The End.
-				 */
+				// The End.
 				this.destroy();
 			} else if (
 				!this.#readyLock &&
@@ -178,7 +230,7 @@ class Player {
 				 */
 				this.#readyLock = true;
 				try {
-					await entersState(this.#connection, VoiceConnectionStatus.Ready, 20 * 1000);
+					await entersState(this.#connection, VoiceConnectionStatus.Ready, 20_000);
 					this.#connection.subscribe(this.#player);
 				} catch {
 					if (this.#connection.state.status !== VoiceConnectionStatus.Destroyed)
@@ -203,12 +255,13 @@ class Player {
 		const process = youtubedl(parse.getVideoURL(this.#nowPlaying.id), {
 			o: '-',
 			q: '',
-			f: 'bestaudio[ext=webm+acodec=opus+asr=48000]/bestaudio',
+			f: 'bestaudio/best',
 			r: '100K',
 		}, { stdio: [ 'ignore', 'pipe', 'ignore' ] });
 
 		if (!process.stdout)
 			throw new Error('No youtube-dl stdout!');
+
 		const stream = process.stdout;
 
 		const onError = (error) => {
@@ -216,7 +269,7 @@ class Player {
 				process.kill();
 
 			stream.resume();
-			throw error;
+			if (!error.message.includes('ERR_STREAM_PREMATURE_CLOSE')) throw error;
 		};
 		this.#resource = await new Promise((resolve) => {
 			process.once('spawn', () => {
@@ -227,16 +280,18 @@ class Player {
 		});
 
 		this.#resource.playStream.on('end', () => {
-			if (this.#loopType === 1) this.#queue.splice(0, 0, this.#nowPlaying);
-			else if (this.#loopType === 2) this.#queue.push(this.#nowPlaying);
+			if (this.#loopType === 1)
+				this.#queue.splice(0, 0, this.#nowPlaying);
+			else if (this.#loopType === 2)
+				this.#queue.push(this.#nowPlaying);
 
 			this.#nowPlaying = null;
 			this.#resource = null;
 			this.play();
 		});
 
-		this.#resource.playStream.on('error', (err) => {
-			console.log(err);
+		this.#resource.playStream.on('error', (error) => {
+			console.log(error);
 		});
 
 		this.#resource.volume.setVolume(this.#volume);
@@ -258,7 +313,9 @@ class Player {
 				const removed = [ this.#nowPlaying ];
 				this.#nowPlaying = null;
 
-				if (amount > 0) removed.push(this.#queue.splice(0, amount - 1));
+				if (amount > 0)
+					removed.push(this.#queue.splice(0, amount - 1));
+
 				await this.play();
 
 				return removed;
@@ -299,7 +356,7 @@ class Player {
 		if (requestedPosition === null) {
 			this.#queue.push(...videos);
 		} else if (requestedPosition === 0) {
-			this.player.stop();
+			this.#player.stop();
 			this.#nowPlaying = null;
 			this.#queue.splice(0, 0, ...videos);
 		} else {
@@ -330,21 +387,15 @@ class Player {
 	}
 
 	/**
-	 * Sets loop type
-	 * @param {0 | 1 | 2} loopType - 0 -> no loop; 1 -> single video loop; 2 -> queue loop
-	 */
-	setLoopType(loopType) {
-		this.#loopType = loopType;
-	}
-
-	/**
 	 * Set playback volume
 	 * @param {number} newVolume - New volume between 0 and 2
 	 */
 	setVolume(newVolume) {
-		if (newVolume < 0 || newVolume > 2)
+		if (newVolume < 0 || 2 < newVolume)
 			throw new UserError('Invalid volume! Available range: 0-2');
 
+
+		// FIXME: 29 was weird... (https://discord.com/channels/640088902526566400/756621847151378432/1017202616918351903)
 		this.#volume = newVolume;
 		if (this.#resource !== null)
 			this.#resource.volume.setVolume(this.#volume);

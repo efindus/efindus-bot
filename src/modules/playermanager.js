@@ -44,34 +44,36 @@ class PlayerManager {
 	 * @returns {Player}
 	 */
 	async connect(user) {
+		if (this.#players[user.guild.id])
+			return this.#players[user.guild.id];
+
 		if (!user.voice.channel)
 			throw new UserError('You\'re not connected to any voice channel on this server.');
 
 		if (!user.voice.channel.joinable)
 			throw new UserError('I don\'t have sufficient permissions to join this voice channel!');
 
-		if (!user.guild.me.voice.channel || !this.#players[user.guild.id]) {
+		if (!user.guild.members.me.voice.channel || !this.#players[user.guild.id]) {
 			const connection = await joinVoiceChannel({
 				channelId: user.voice.channelId,
-				guildId: user.guildId,
+				guildId: user.guild.id,
 				adapterCreator: user.guild.voiceAdapterCreator,
 			});
 
-			if (this.#players[user.guild.id])
-				return this.#players[user.guild.id];
-
-			this.#players[user.guild.id] = new Player(connection, user.voice.channelId, () => {
-				delete this.#players[user.guild.id];
-			});
+			if (!this.#players[user.guild.id]) {
+				this.#players[user.guild.id] = new Player(connection, user.voice.channelId, () => {
+					delete this.#players[user.guild.id];
+				});
+			}
 
 			return this.#players[user.guild.id];
-		} else if (user.voice.channelId !== user.guild.me.voice.channelId) {
-			throw new UserError(`You're not connected to <#${user.guild.me.voice.channelId}>`);
+		} else if (user.voice.channelId !== user.guild.members.me.voice.channelId) {
+			throw new UserError(`You're not connected to <#${user.guild.members.me.voice.channelId}>`);
 		}
 	}
 
 	getPlayer(guildId) {
-		return this.#players[guildId];
+		return this.#players[guildId] ?? null;
 	}
 
 	leave(guildId) {
