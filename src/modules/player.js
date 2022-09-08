@@ -1,8 +1,8 @@
-const { entersState, createAudioPlayer, createAudioResource, demuxProbe, NoSubscriberBehavior, VoiceConnectionStatus, VoiceConnectionDisconnectReason, AudioPlayerStatus } = require('@discordjs/voice');
 const youtubedl = require('youtube-dl-exec').exec;
+const { entersState, createAudioPlayer, createAudioResource, demuxProbe, NoSubscriberBehavior, VoiceConnectionStatus, VoiceConnectionDisconnectReason, AudioPlayerStatus } = require('@discordjs/voice');
 
-const parse = require('../utils/parse');
 const time = require('../utils/time');
+const parse = require('../utils/parse');
 const { UserError } = require('../utils/errors');
 
 class Player {
@@ -25,10 +25,10 @@ class Player {
 	#loopType = 0;
 
 	/**
-	 * Current volume; 1 - 100%, .5 - 50%
+	 * Current volume; 0-200%
 	 * @type {number}
 	 */
-	#volume = 1;
+	#volume = 100;
 
 	/**
 	 * AudioPlayer instance for current server
@@ -95,7 +95,7 @@ class Player {
 	 * Shows whether the player is paused or not
 	 */
 	get isPaused() {
-		return this.#player.state === AudioPlayerStatus.Paused;
+		return this.#player.state.status === AudioPlayerStatus.Paused;
 	}
 
 	/**
@@ -125,10 +125,23 @@ class Player {
 	}
 
 	/**
-	 * Returns volume as a number from 0 to 2
+	 * Current volume; 0-200%
 	 */
 	get volume() {
 		return this.#volume;
+	}
+
+	/**
+	 * Set playback volume
+	 * @param {number} newVolume - New volume between 0 and 200
+	 */
+	set volume(newVolume) {
+		if (newVolume < 0 || 200 < newVolume)
+			throw new UserError('Invalid volume! Available range: 0-200%');
+
+		this.#volume = newVolume;
+		if (this.#resource !== null)
+			this.#resource.volume.setVolume(this.#volume / 100);
 	}
 
 	/**
@@ -171,6 +184,13 @@ class Player {
 	 */
 	get queue() {
 		return this.#queue;
+	}
+
+	/**
+	 * Returns the index of the last page in the queue
+	 */
+	get lastQueuePage() {
+		return Math.max(0, Math.floor((this.queueLength - 1) / 10));
 	}
 
 	/**
@@ -251,7 +271,7 @@ class Player {
 
 		this.#nowPlaying = this.#queue.shift();
 
-		// FIXME: When video has multiple audio tracks it selects some non original one (for now that's only a problem when watching mrbeast's videos)
+		// FIXME: When video has multiple audio tracks it used to select some non original one (for now that's only a problem when watching mrbeast's videos e.g. https://www.youtube.com/watch?v=3jS_yEK8qVI), currently it might be fixed (requires verificaiton)
 		const process = youtubedl(parse.getVideoURL(this.#nowPlaying.id), {
 			o: '-',
 			q: '',
@@ -294,7 +314,7 @@ class Player {
 			console.log(error);
 		});
 
-		this.#resource.volume.setVolume(this.#volume);
+		this.volume = this.#volume;
 		this.#player.play(this.#resource);
 	}
 
@@ -313,8 +333,8 @@ class Player {
 				const removed = [ this.#nowPlaying ];
 				this.#nowPlaying = null;
 
-				if (amount > 0)
-					removed.push(this.#queue.splice(0, amount - 1));
+				if (amount > 1)
+					removed.push(...this.#queue.splice(0, amount - 1));
 
 				await this.play();
 
@@ -387,21 +407,6 @@ class Player {
 	}
 
 	/**
-	 * Set playback volume
-	 * @param {number} newVolume - New volume between 0 and 2
-	 */
-	setVolume(newVolume) {
-		if (newVolume < 0 || 2 < newVolume)
-			throw new UserError('Invalid volume! Available range: 0-2');
-
-
-		// FIXME: 29 was weird... (https://discord.com/channels/640088902526566400/756621847151378432/1017202616918351903)
-		this.#volume = newVolume;
-		if (this.#resource !== null)
-			this.#resource.volume.setVolume(this.#volume);
-	}
-
-	/**
 	 * Start autoleave
 	 */
 	startAutoleave() {
@@ -446,7 +451,8 @@ class Player {
 		this.#isLeaving = true;
 		this.resetAutoleave();
 		this.#player.stop();
-		this.#connection.destroy();
+		if (this.#connection.state.status !== VoiceConnectionStatus.Destroyed)
+			this.#connection.destroy();
 		this.#onDestroy();
 	}
 }

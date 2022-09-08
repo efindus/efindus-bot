@@ -5,6 +5,7 @@
 exports.getMS = (input) => {
 	const parts = input.split(':');
 	let result = 0, ratio = 1000;
+
 	while (parts.length > 0 && ratio <= 1000 * 60 * 60) {
 		result += (+parts.pop()) * ratio;
 		ratio *= 60;
@@ -18,14 +19,19 @@ exports.getMS = (input) => {
  * @returns {string} input formatted into HH:MM:SS
  */
 exports.formatMS = (input) => {
-	if (!input) return '00:00';
+	if (!input)
+		return '00:00';
 
 	let result = '';
 	input /= 1000, input = Math.round(input);
+
 	const hours = Math.floor(input / 60 / 60);
 	const minutes = `${Math.floor(input / 60 % 60)}`;
 	const seconds = `${Math.floor(input % 60)}`;
-	if (hours >= 1) result += `${`${hours}`.padStart(2, '0')}:`;
+
+	if (hours >= 1)
+		result += `${`${hours}`.padStart(2, '0')}:`;
+
 	result += `${minutes.padStart(2, '0')}:`;
 	result += `${seconds.padStart(2, '0')}`;
 

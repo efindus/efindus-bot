@@ -27,17 +27,20 @@ exports.formatVideoWithProgress = (queueVideo, progressMS) => {
  * @returns Formatted queue and the actual pageIndex
  */
 exports.formatQueue = (player, pageIndex) => {
-	if (pageIndex < 0) pageIndex = 0;
 	let formattedQueue = '';
+	if (pageIndex < 0)
+		pageIndex = 0;
 
-	if (player.nowPlaying !== null) formattedQueue += `:play_pause: **Currently playing${player.loopType === 0 ? '' : ` [loop: ${player.loopType === 1 ? 'video' : 'queue'}]`}:**\n**[0]** ${this.formatVideoWithProgress(player.nowPlaying, player.playtimeDuration)}\n\n`;
+	if (player.nowPlaying !== null)
+		formattedQueue += `:play_pause: **Currently playing${player.loopType === 0 ? '' : ` [loop: ${player.loopType === 1 ? 'video' : 'queue'}]`}:**\n**[0]** ${this.formatVideoWithProgress(player.nowPlaying, player.playtimeDuration)}\n\n`;
 
-	if (player.queueLength < pageIndex * 10) pageIndex = Math.floor(player.queueLength / 10);
+	if (player.queueLength <= pageIndex * 10)
+		pageIndex = player.lastQueuePage;
+
 	if (player.queueLength !== 0) {
 		formattedQueue += `:notepad_spiral: **Current queue [${player.queueLength}]:**\n`;
-		for (let i = pageIndex * 10; i < Math.min(player.queueLength, (pageIndex + 1) * 10); i++) {
+		for (let i = pageIndex * 10; i < Math.min(player.queueLength, (pageIndex + 1) * 10); i++)
 			formattedQueue += `**[${i + 1}]** ${this.formatVideo(player.queue[i])}\n`;
-		}
 	}
 
 	return {

@@ -2,16 +2,12 @@ require('dotenv').config();
 const { Client, GatewayIntentBits, ApplicationCommandOptionType, ActivityType, ComponentType, ButtonStyle } = require('discord.js');
 
 require('./utils/array');
+const yt = require('./utils/youtube');
 const parse = require('./utils/parse');
 const models = require('./utils/models');
-const yt = require('./utils/youtube');
 const { logger } = require('./utils/logger');
-const { PlayerManager } = require('./modules/playermanager');
 const { UserError } = require('./utils/errors');
-
-// FIXME: fix queue showing extra empty page when there are eg. 10 videos
-// FIXME: try using @discordjs/opus instead of opusscript
-// FIXME: autoleave (https://discord.com/channels/640088902526566400/756621847151378432/1017203654450753577)
+const { PlayerManager } = require('./modules/playermanager');
 
 /*
  * ROADMAP:
@@ -250,7 +246,7 @@ client.on('interactionCreate', async (interaction) => {
 							},
 							footer: {
 								iconURL: interaction.member.displayAvatarURL(),
-								text: `🔉 ${Math.round(player.volume * 100)}% • Requested by: ${interaction.member.user.tag}`,
+								text: `🔉 ${player.volume}% • Requested by: ${interaction.member.user.tag}`,
 							},
 						};
 					} else {
@@ -269,7 +265,7 @@ client.on('interactionCreate', async (interaction) => {
 							},
 							footer: {
 								iconURL: interaction.member.displayAvatarURL(),
-								text: `🔉 ${Math.round(player.volume * 100)}% • Requested by: ${interaction.member.user.tag}`,
+								text: `🔉 ${player.volume}% • Requested by: ${interaction.member.user.tag}`,
 							},
 						};
 					}
@@ -330,7 +326,7 @@ client.on('interactionCreate', async (interaction) => {
 					checkConnection(interaction, true);
 
 					const pageIndex = (interaction.options.getInteger('page') ?? 1) - 1;
-					if (pageIndex < 0 || Math.floor(player.queueLength / 10) < pageIndex)
+					if (pageIndex < 0 || player.lastQueuePage < pageIndex)
 						throw new UserError('Invalid page number!');
 
 					const { formattedQueue } = models.formatQueue(player, pageIndex);
@@ -363,7 +359,7 @@ client.on('interactionCreate', async (interaction) => {
 					response.customEmbedProperties = {
 						footer: {
 							iconURL: interaction.member.displayAvatarURL(),
-							text: `Page ${pageIndex + 1}/${Math.floor(player.queueLength / 10) + 1}`,
+							text: `Page ${pageIndex + 1}/${player.lastQueuePage + 1}`,
 						},
 					};
 
@@ -469,15 +465,11 @@ client.on('interactionCreate', async (interaction) => {
 					checkConnection(interaction);
 					const newVolume = interaction.options.getInteger('volume');
 
-					if (newVolume !== null) {
-						if (newVolume < 0 || 200 < newVolume)
-							throw new UserError('Invalid volume! Available range: 0-200%');
-
-						player.setVolume(newVolume / 100);
-					}
+					if (newVolume !== null)
+						player.volume = newVolume;
 
 					response.customFormatting = true;
-					response.message = `**Volume:**\n[${'▬'.repeat(Math.round(player.volume * 5))}](https://youtu.be/dQw4w9WgXcQ)${'▬'.repeat(10 - Math.round(player.volume * 5))} \`${player.volume * 100}%\``;
+					response.message = `**Volume:**\n[${'▬'.repeat(Math.round((player.volume / 100) * 5))}](https://youtu.be/dQw4w9WgXcQ)${'▬'.repeat(10 - Math.round((player.volume / 100) * 5))} \`${player.volume}%\``;
 
 					break;
 				}
@@ -486,15 +478,7 @@ client.on('interactionCreate', async (interaction) => {
 					if (!player)
 						checkConnection(interaction);
 
-					if (player.autoleaveTimeout === null) {
-						checkConnection(interaction);
-						throw new UserError('I\'m not currently autoleaving!');
-					}
-
-					if (player.delayedAutoleave !== 0)
-						throw new UserError('Autoleave was already delayed!');
-
-					player.delayedAutoleave = 1;
+					player.delayAutoleave();
 					response.message = 'I\'ll stay in the voice channel alone 5 minutes longer. (sad lonely bot noises)';
 
 					break;
@@ -536,7 +520,7 @@ client.on('interactionCreate', async (interaction) => {
 						},
 						footer: {
 							iconURL: interaction.member.displayAvatarURL(),
-							text: `🔉 ${Math.round(player.volume * 100)}% • Requested by: ${interaction.member.user.tag}`,
+							text: `🔉 ${player.volume}% • Requested by: ${interaction.member.user.tag}`,
 						},
 					};
 
@@ -583,7 +567,7 @@ client.on('interactionCreate', async (interaction) => {
 								},
 								footer: {
 									iconURL: interaction.member.displayAvatarURL(),
-									text: `Page ${generatedQueue.pageIndex + 1}/${Math.floor(player.queue.length / 10) + 1}`,
+									text: `Page ${generatedQueue.pageIndex + 1}/${player.lastQueuePage + 1}`,
 								},
 							},
 						],
