@@ -85,11 +85,16 @@ class Player {
 	#creationTS = null;
 
 	/**
-	 * Function to be called when destroying the Player. Used by PlayerManager to remove the Player object from it's list
+	 * Function to be called when player connects to the voice channel.
+	 * @type {() => void}
 	 */
-	#onDestroy = () => {
-		// just initialize
-	};
+	#onConnect;
+
+	/**
+	 * Function to be called when destroying the Player. Used by PlayerManager to remove the Player object from it's list
+	 * @type {() => void}
+	 */
+	#onDestroy;
 
 	/**
 	 * Shows whether the player is paused or not
@@ -196,9 +201,10 @@ class Player {
 	/**
 	 * @param {import('@discordjs/voice').VoiceConnection} connection - VoiceConnection instance for this Player instance
 	 * @param {import('discord.js').Snowflake} channelId - ID of the channel this Player instance is connected to
+	 * @param {() => void} onConnect - Function to be called when player connects to the voice channel.
 	 * @param {() => void} onDestroy - Function to be called when destroying the Player
 	 */
-	constructor(connection, channelId, onDestroy) {
+	constructor(connection, channelId, onConnect, onDestroy) {
 		this.#player = createAudioPlayer({
 			behaviors: {
 				noSubscriber: NoSubscriberBehavior.Pause,
@@ -208,6 +214,7 @@ class Player {
 		this.#connection = connection;
 		this.#channelId = channelId;
 		this.#creationTS = Date.now();
+		this.#onConnect = onConnect;
 		this.#onDestroy = onDestroy;
 
 		// Stolen from https://github.com/discordjs/discord.js/blob/dfe449c253b617e8f92c720a2f71135aa1601a65/packages/voice/examples/music-bot/src/music/subscription.ts don't mind me
@@ -252,6 +259,7 @@ class Player {
 				try {
 					await entersState(this.#connection, VoiceConnectionStatus.Ready, 20_000);
 					this.#connection.subscribe(this.#player);
+					this.#onConnect();
 				} catch {
 					if (this.#connection.state.status !== VoiceConnectionStatus.Destroyed)
 						this.#connection.destroy();

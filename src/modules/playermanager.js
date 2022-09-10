@@ -10,15 +10,15 @@ class PlayerManager {
 	#players = {};
 
 	/**
-	 * @param {import('discord.js').Client} client - Discord.JS client instance
+	 * @param {import('../bot').Bot} bot - Bot instance
 	 */
-	constructor(client) {
-		client.on('voiceStateUpdate', async (oldState, newState) => {
+	constructor(bot) {
+		bot.client.on('voiceStateUpdate', async (oldState, newState) => {
 			const player = this.#players[oldState.guild.id];
 			if (!player)
 				return;
 
-			if (oldState.id === client.user.id) {
+			if (oldState.id === bot.client.user.id) {
 				if (newState.channelId) {
 					player.channelId = newState.channelId;
 				} else {
@@ -30,7 +30,7 @@ class PlayerManager {
 			}
 
 			if ([ oldState.channelId, newState.channelId ].includes(player.channelId)) {
-				if ((await client.channels.fetch(player.channelId)).members.size === 1)
+				if ((await bot.client.channels.fetch(player.channelId)).members.size === 1)
 					player.startAutoleave();
 				else if (player.autoleaveTimeout !== null)
 					player.resetAutoleave();
@@ -61,8 +61,12 @@ class PlayerManager {
 			});
 
 			if (!this.#players[user.guild.id]) {
-				this.#players[user.guild.id] = new Player(connection, user.voice.channelId, () => {
-					delete this.#players[user.guild.id];
+				await new Promise((resolve) => {
+					this.#players[user.guild.id] = new Player(connection, user.voice.channelId, () => {
+						resolve();
+					}, () => {
+						delete this.#players[user.guild.id];
+					});
 				});
 			}
 
