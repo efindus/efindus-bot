@@ -1,7 +1,9 @@
 require('dotenv').config();
+const { existsSync } = require('fs');
 
 require('./utils/array');
 const { Bot } = require('./bot');
+const config = existsSync('./config.js') ? require('../config') : require('../config.example');
 const { logger } = require('./utils/logger');
 
 /*
@@ -23,6 +25,7 @@ const { logger } = require('./utils/logger');
 
 new Bot({
 	botToken: process.env.TOKEN,
+	config: config,
 });
 
 process.on('uncaughtException', error => {

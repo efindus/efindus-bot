@@ -22,14 +22,13 @@ module.exports = new Command({
 	],
 	deferReply: true,
 	voiceRequirements: 2,
-	run: async (bot, interaction) => {
-		const player = bot.playerManager.getPlayer(interaction.guild.id);
+	run: async ({ bot, interaction, player }) => {
 		const index = interaction.options.getInteger('position'), amount = interaction.options.getInteger('amount') ?? 1;
 
 		const removed = await player.skip(index, amount);
 		return new Response({
 			customFormatting: true,
-			message: `<:check:1017933557412417586> ${models.formatVideo(removed[0])} ${removed.length > 1 ? `and ${removed.length - 1} more video${removed.length - 1 === 1 ? '' : 's'} have` : 'has'} been skipped!`,
+			message: `${bot.config.emotes.check} ${models.formatVideo(removed[0])} ${removed.length > 1 ? `and ${removed.length - 1} more video${removed.length - 1 === 1 ? '' : 's'} have` : 'has'} been skipped!`,
 		});
 	},
 });

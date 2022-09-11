@@ -5,8 +5,7 @@ module.exports = new Command({
 	name: 'resume',
 	description: 'Resume the video.',
 	voiceRequirements: 2,
-	run: async (bot, interaction) => {
-		const player = bot.playerManager.getPlayer(interaction.guild.id);
+	run: async ({ player }) => {
 		if (player.nowPlaying === null)
 			throw new UserError('Nothing is currently playing!');
 

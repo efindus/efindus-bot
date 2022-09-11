@@ -2,19 +2,23 @@ const { Client, GatewayIntentBits, ActivityType } = require('discord.js');
 
 require('./utils/array');
 const { logger } = require('./utils/logger');
-const { PlayerManager } = require('./modules/playermanager');
-const { CommandManager } = require('./modules/commandmanager');
+const { PlayerManager } = require('./modules/playerManager');
+const { CommandManager } = require('./modules/commandManager');
 
 class Bot {
 	client;
+	config;
 	playerManager;
 	commandManager;
 
 	/**
 	 * @param {object} data
 	 * @param {string} data.botToken
+	 * @param {import('../config.example')} data.config
 	 */
 	constructor(data) {
+		this.config = data.config;
+
 		this.client = new Client({
 			intents: [
 				GatewayIntentBits.Guilds, GatewayIntentBits.GuildVoiceStates,

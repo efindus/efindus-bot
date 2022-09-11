@@ -5,8 +5,7 @@ module.exports = new Command({
 	name: 'pause',
 	description: 'Pause the video.',
 	voiceRequirements: 2,
-	run: async (bot, interaction) => {
-		const player = bot.playerManager.getPlayer(interaction.guild.id);
+	run: async ({ player }) => {
 		if (player.nowPlaying === null)
 			throw new UserError('Nothing is currently playing!');
 

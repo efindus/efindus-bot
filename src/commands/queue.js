@@ -27,9 +27,7 @@ module.exports = new Command({
 			voiceRequirements: 0,
 		},
 	},
-	run: async (bot, interaction) => {
-		const player = bot.playerManager.getPlayer(interaction.guild.id);
-
+	run: async ({ interaction, player }) => {
 		let generatedQueue;
 		if (interaction.isCommand()) {
 			const pageIndex = (interaction.options.getInteger('page') ?? 1) - 1;

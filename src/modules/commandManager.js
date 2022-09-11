@@ -88,7 +88,11 @@ class CommandManager {
 
 				await verifyVoiceRequirements(bot, interaction, interactionTypeData.voiceRequirements ?? command.voiceRequirements);
 
-				const response = await command.run(bot, interaction);
+				const response = await command.run({
+					bot,
+					interaction,
+					player: bot.playerManager.getPlayer(interaction.guild.id),
+				});
 
 				if (!response) {
 					if (!command.deferReply) {
@@ -105,8 +109,8 @@ class CommandManager {
 					embeds: [
 						{
 							title: response.title,
-							description: response.message.length !== 0 ? (response.customFormatting ? response.message : `<:check:1017933557412417586> **${response.message}**`) : null,
-							color: 0x249e43,
+							description: response.message.length !== 0 ? (response.customFormatting ? response.message : `${bot.config.emotes.check} **${response.message}**`) : null,
+							color: bot.config.colors.main,
 							author: {
 								name: bot.client.user.username,
 								iconURL: bot.client.user.displayAvatarURL(),
@@ -130,8 +134,8 @@ class CommandManager {
 				const replyObject = {
 					embeds: [
 						{
-							description: `<:cross:1017933595660271738> **${error.message}**`,
-							color: 0xcf1d32,
+							description: `${bot.config.emotes.cross} **${error.message}**`,
+							color: bot.config.colors.red,
 							author: {
 								name: bot.client.user.username,
 								iconURL: bot.client.user.displayAvatarURL(),

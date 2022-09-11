@@ -27,8 +27,7 @@ module.exports = new Command({
 			enabled: true,
 		},
 	},
-	run: async (bot, interaction) => {
-		const player = bot.playerManager.getPlayer(interaction.guild.id);
+	run: async ({ bot, interaction, player }) => {
 		if (interaction.isCommand()) {
 			/**
 			 * @type {import('../index').QueueVideo[]}
@@ -73,11 +72,11 @@ module.exports = new Command({
 
 			return new Response({
 				customFormatting: true,
-				title: position === 0 ? 'Now playing!' : `<:check:1017933557412417586> Video has been added to the queue! (#${position})`,
+				title: position === 0 ? `${bot.config.emotes.check} Now playing!` : `${bot.config.emotes.check} Video has been added to the queue! (#${position})`,
 				message: `${models.formatVideo(result)}`,
 				customEmbedProperties: {
 					thumbnail: {
-						url: parse.getVideoThubnailURL(result.id),
+						url: parse.getVideoThumbnailURL(result.id),
 					},
 					footer: {
 						iconURL: interaction.member.displayAvatarURL(),

@@ -26,44 +26,13 @@ class Response {
 }
 
 class Command {
-	/**
-	 * Command's name
-	 */
 	#name;
-
-	/**
-	 * Command's description
-	 */
 	#description;
-
-	/**
-	 * Should the response be private
-	 */
-	#ephemeral = false;
-
-	/**
-	 * Should the reply be deffered (gives more time for the reply)
-	 */
-	#deferReply = false;
-
-	/**
-	 * Defines whether the command will edit the message or reply to the message
-	 */
-	#editsMessage = false;
-
-	/**
-	 * Should the command be available in DMs
-	 */
-	#availableInDMs = false;
-
-	/**
-	 * 0 - normal command
-	 * 1 - guarantees that the bot is connected to a VC
-	 * 2 - additionally guarantees that the member running the command is connected to the same VC as the bot
-	 * @type {0 | 1 | 2}
-	 */
-	#voiceRequirements = 0;
-
+	#ephemeral;
+	#deferReply;
+	#editsMessage;
+	#availableInDMs;
+	#voiceRequirements;
 	#interactionTypes;
 	#options;
 	#run;
@@ -139,7 +108,7 @@ class Command {
 	 * @param {null | 0 | 1 | 2} data.voiceRequirements
 	 * @param {Record<'command' | 'button' | 'selectMenu', { enabled: boolean, ephemeral?: boolean, deferReply?: boolean, voiceRequirements?: 0 | 1 | 2 }>?} data.interactionTypes
 	 * @param {import('discord.js').ApplicationCommandOptionData[]?} data.options
-	 * @param {(bot: import('../bot').Bot, interaction: import('discord.js').Interaction) => Promise<Response>} data.run
+	 * @param {(data: { bot: import('../bot').Bot, interaction: import('discord.js').Interaction, player: import('./player').Player }) => Promise<Response>} data.run
 	 */
 	constructor(data) {
 		this.#name = data.name;

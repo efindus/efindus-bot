@@ -25,8 +25,7 @@ module.exports = new Command({
 	],
 	deferReply: true,
 	voiceRequirements: 2,
-	run: async (bot, interaction) => {
-		const player = bot.playerManager.getPlayer(interaction.guild.id);
+	run: async ({ bot, interaction, player }) => {
 		const results = await yt.findVideos(interaction.options.getString('query'), 1), requestedPosition = interaction.options.getInteger('position');
 
 		if (requestedPosition < 0 || player.queueLength < requestedPosition)
@@ -40,7 +39,7 @@ module.exports = new Command({
 			const position = await player.addToQueue(result.videos, requestedPosition);
 
 			return new Response({
-				title: `<:check:1017933557412417586> Playlist has been added to the queue [${result.videos.length + 1} video${result.videos.length + 1 === 1 ? '' : 's'}]! (#${position})`,
+				title: `${bot.config.emotes.check} Playlist has been added to the queue [${result.videos.length + 1} video${result.videos.length + 1 === 1 ? '' : 's'}]! (#${position})`,
 				message: `[${result.title}](${parse.getPlaylistURL(result.id)}) by **${result.author}**`,
 				customFormatting: true,
 				customEmbedProperties: {
@@ -61,12 +60,12 @@ module.exports = new Command({
 			const position = await player.addToQueue([ result ], requestedPosition);
 
 			return new Response({
-				title: position === 0 ? 'Now playing!' : `<:check:1017933557412417586> Video has been added to the queue! (#${position})`,
+				title: position === 0 ? `${bot.config.emotes.check} Now playing!` : `${bot.config.emotes.check} Video has been added to the queue! (#${position})`,
 				message: `${models.formatVideo(result)}`,
 				customFormatting: true,
 				customEmbedProperties: {
 					thumbnail: {
-						url: parse.getVideoThubnailURL(result.id),
+						url: parse.getVideoThumbnailURL(result.id),
 					},
 					footer: {
 						iconURL: interaction.member.displayAvatarURL(),

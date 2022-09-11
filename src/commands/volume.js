@@ -14,8 +14,7 @@ module.exports = new Command({
 		},
 	],
 	voiceRequirements: 2,
-	run: async (bot, interaction) => {
-		const player = bot.playerManager.getPlayer(interaction.guild.id);
+	run: async ({ interaction, player }) => {
 		const newVolume = interaction.options.getInteger('volume');
 
 		if (newVolume !== null)

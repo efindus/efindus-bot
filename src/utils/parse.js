@@ -73,6 +73,6 @@ exports.getPlaylistURL = (playlistID) => {
  * @param {string} videoID - Video ID to get thumbnail url of
  * @returns {string} Thubnail URL of a video with given ID
  */
-exports.getVideoThubnailURL = (videoID) => {
+exports.getVideoThumbnailURL = (videoID) => {
 	return `https://i.ytimg.com/vi/${videoID}/hqdefault.jpg`;
 };

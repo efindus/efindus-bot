@@ -28,8 +28,7 @@ module.exports = new Command({
 		},
 	],
 	voiceRequirements: 2,
-	run: async (bot, interaction) => {
-		const player = bot.playerManager.getPlayer(interaction.guild.id);
+	run: async ({ interaction, player }) => {
 		let message;
 		switch (interaction.options.getString('type')) {
 			case 'none': {

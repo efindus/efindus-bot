@@ -5,8 +5,7 @@ module.exports = new Command({
 	name: 'clear',
 	description: 'Clear the queue.',
 	voiceRequirements: 2,
-	run: async (bot, interaction) => {
-		const player = bot.playerManager.getPlayer(interaction.guild.id);
+	run: async ({ player }) => {
 		if (player.queueLength === 0)
 			throw new UserError('The queue is empty!');
 		else
