@@ -86,9 +86,20 @@ class CommandManager {
 					}
 				}
 
-				await verifyVoiceRequirements(bot, interaction, command.voiceRequirements);
+				await verifyVoiceRequirements(bot, interaction, interactionTypeData.voiceRequirements ?? command.voiceRequirements);
 
 				const response = await command.run(bot, interaction);
+
+				if (!response) {
+					if (!command.deferReply) {
+						if (interactionType !== 'command')
+							await interaction.deferUpdate();
+						else
+							await interaction.deferReply();
+					}
+
+					return;
+				}
 
 				const replyObject = response.customProperties ?? {
 					embeds: [

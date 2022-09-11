@@ -24,6 +24,7 @@ module.exports = new Command({
 		},
 		button: {
 			enabled: true,
+			voiceRequirements: 0,
 		},
 	},
 	run: async (bot, interaction) => {

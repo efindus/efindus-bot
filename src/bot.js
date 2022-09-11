@@ -1,11 +1,7 @@
-const { Client, GatewayIntentBits, ApplicationCommandOptionType, ActivityType, ComponentType, ButtonStyle } = require('discord.js');
+const { Client, GatewayIntentBits, ActivityType } = require('discord.js');
 
 require('./utils/array');
-const yt = require('./utils/youtube');
-const parse = require('./utils/parse');
-const models = require('./utils/models');
 const { logger } = require('./utils/logger');
-const { UserError } = require('./utils/errors');
 const { PlayerManager } = require('./modules/playermanager');
 const { CommandManager } = require('./modules/commandmanager');
 

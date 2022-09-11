@@ -108,7 +108,7 @@ class Command {
 
 	/**
 	 * Types of interactions forwarded to the command, if ephemeral or deferReply fields are present they will overwrite the main ones
-	 * @type {Record<'command' | 'button' | 'selectMenu', { enabled: boolean, ephemeral?: boolean, deferReply?: boolean }>}
+	 * @type {Record<'command' | 'button' | 'selectMenu', { enabled: boolean, ephemeral?: boolean, deferReply?: boolean, voiceRequirements?: 0 | 1 | 2 }>}
 	 */
 	get interactionTypes() {
 		return this.#interactionTypes;
@@ -137,7 +137,7 @@ class Command {
 	 * @param {boolean?} data.editsMessage
 	 * @param {boolean?} data.availableInDMs
 	 * @param {null | 0 | 1 | 2} data.voiceRequirements
-	 * @param {Record<'command' | 'button' | 'selectMenu', { enabled: boolean, ephemeral?: boolean, deferReply?: boolean }>?} data.interactionTypes
+	 * @param {Record<'command' | 'button' | 'selectMenu', { enabled: boolean, ephemeral?: boolean, deferReply?: boolean, voiceRequirements?: 0 | 1 | 2 }>?} data.interactionTypes
 	 * @param {import('discord.js').ApplicationCommandOptionData[]?} data.options
 	 * @param {(bot: import('../bot').Bot, interaction: import('discord.js').Interaction) => Promise<Response>} data.run
 	 */
