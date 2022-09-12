@@ -17,11 +17,11 @@ module.exports = new Command({
 		},
 	],
 	voiceRequirements: 2,
+	deferReply: true,
 	interactionTypes: {
 		command: {
 			enabled: true,
 			ephemeral: true,
-			deferReply: true,
 		},
 		selectMenu: {
 			enabled: true,
