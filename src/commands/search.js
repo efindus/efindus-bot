@@ -38,9 +38,9 @@ module.exports = new Command({
 
 			results.forEach((video) => {
 				videos.push({
-					label: video.title,
+					label: video.title.length > 100 ? `${video.title.slice(0, 97)}...` : video.title,
 					description: video.author,
-					value: parse.getVideoURL(video.id),
+					value: video.id,
 				});
 			});
 
@@ -67,7 +67,7 @@ module.exports = new Command({
 			/**
 			 * @type {import('../index').QueueVideo}
 			 */
-			const result = await yt.findVideos(interaction.values[0], 1);
+			const result = await yt.findVideos(parse.getVideoURL(interaction.values[0]), 1);
 			const position = await player.addToQueue([ result ]);
 
 			return new Response({
