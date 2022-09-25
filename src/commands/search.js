@@ -3,7 +3,7 @@ const { ApplicationCommandOptionType, ComponentType } = require('discord.js');
 const yt = require('../utils/youtube');
 const parse = require('../utils/parse');
 const models = require('../utils/models');
-const { Command, Response } = require('../modules/command');
+const { Command, Response } = require('../structures/Command');
 
 module.exports = new Command({
 	name: 'search',

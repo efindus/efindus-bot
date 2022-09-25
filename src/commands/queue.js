@@ -2,7 +2,7 @@ const { ApplicationCommandOptionType, ComponentType, ButtonStyle } = require('di
 
 const models = require('../utils/models');
 const { UserError } = require('../utils/errors');
-const { Command, Response } = require('../modules/command');
+const { Command, Response } = require('../structures/Command');
 
 module.exports = new Command({
 	name: 'queue',

@@ -22,7 +22,7 @@ exports.formatVideoWithProgress = (queueVideo, progressMS) => {
 
 /**
  * Format queue data of a player into embed-ready format
- * @param {import('../modules/player').Player} player - Player instance to get queue data from
+ * @param {import('../structures/Player').Player} player - Player instance to get queue data from
  * @param {number} pageIndex - Index of queue page to generate. If such page index doesn't exist it will be capped to the closest index, and it will be returned
  * @returns Formatted queue and the actual pageIndex
  */

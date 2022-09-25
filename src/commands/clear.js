@@ -1,5 +1,5 @@
 const { UserError } = require('../utils/errors');
-const { Command, Response } = require('../modules/command');
+const { Command, Response } = require('../structures/Command');
 
 module.exports = new Command({
 	name: 'clear',

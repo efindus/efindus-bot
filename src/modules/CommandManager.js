@@ -1,6 +1,6 @@
 const { join, resolve } = require('path');
 
-const { Command } = require('./command');
+const { Command } = require('../structures/Command');
 const { logger } = require('../utils/logger');
 const { UserError } = require('../utils/errors');
 

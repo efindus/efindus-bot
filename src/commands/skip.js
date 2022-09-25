@@ -1,7 +1,7 @@
 const { ApplicationCommandOptionType } = require('discord.js');
 
 const models = require('../utils/models');
-const { Command, Response } = require('../modules/command');
+const { Command, Response } = require('../structures/Command');
 
 module.exports = new Command({
 	name: 'skip',

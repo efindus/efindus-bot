@@ -4,7 +4,7 @@ const yt = require('../utils/youtube');
 const parse = require('../utils/parse');
 const models = require('../utils/models');
 const { UserError } = require('../utils/errors');
-const { Command, Response } = require('../modules/command');
+const { Command, Response } = require('../structures/Command');
 
 module.exports = new Command({
 	name: 'play',

@@ -2,8 +2,8 @@ const { Client, GatewayIntentBits, ActivityType } = require('discord.js');
 
 require('./utils/array');
 const { logger } = require('./utils/logger');
-const { PlayerManager } = require('./modules/playerManager');
-const { CommandManager } = require('./modules/commandManager');
+const { PlayerManager } = require('./modules/PlayerManager');
+const { CommandManager } = require('./modules/CommandManager');
 
 class Bot {
 	client;

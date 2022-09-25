@@ -108,7 +108,7 @@ class Command {
 	 * @param {null | 0 | 1 | 2} data.voiceRequirements
 	 * @param {Record<'command' | 'button' | 'selectMenu', { enabled: boolean, ephemeral?: boolean, deferReply?: boolean, voiceRequirements?: 0 | 1 | 2 }>?} data.interactionTypes
 	 * @param {import('discord.js').ApplicationCommandOptionData[]?} data.options
-	 * @param {(data: { bot: import('../bot').Bot, interaction: import('discord.js').Interaction, player: import('./player').Player }) => Promise<Response>} data.run
+	 * @param {(data: { bot: import('../bot').Bot, interaction: import('discord.js').Interaction, player: import('./Player').Player }) => Promise<Response>} data.run
 	 */
 	constructor(data) {
 		this.#name = data.name;
