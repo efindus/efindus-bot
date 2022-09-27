@@ -25,6 +25,7 @@ const { logger } = require('./utils/logger');
 
 new Bot({
 	botToken: process.env.TOKEN,
+	mongoConnectionString: process.env.DB_CONNECTION_STRING,
 	config: config,
 });
 

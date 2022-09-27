@@ -1,4 +1,5 @@
 module.exports = {
+	databaseName: 'efindus-bot',
 	colors: {
 		main: 0x249e43,
 		red: 0xcf1d32,
