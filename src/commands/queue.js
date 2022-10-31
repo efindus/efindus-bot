@@ -27,7 +27,7 @@ module.exports = new Command({
 			voiceRequirements: 0,
 		},
 	},
-	run: async ({ interaction, player }) => {
+	run: async ({ interaction, player, bot }) => {
 		let generatedQueue;
 		if (interaction.isCommand()) {
 			const pageIndex = (interaction.options.getInteger('page') ?? 1) - 1;
@@ -35,8 +35,6 @@ module.exports = new Command({
 				throw new UserError('Invalid page number!');
 
 			generatedQueue = models.formatQueue(player, pageIndex);
-			if (generatedQueue.formattedQueue.length === 0)
-				throw new UserError('Nothing is currently playing!');
 		} else if (interaction.isButton()) {
 			const tokens = interaction.customId.split('-');
 			if (!player || +tokens[2] !== player.creationTS)
@@ -50,7 +48,7 @@ module.exports = new Command({
 
 		return new Response({
 			customFormatting: true,
-			message: generatedQueue.formattedQueue,
+			message: generatedQueue.pageIndex === -1 ? `${bot.config.emotes.cross} ${generatedQueue.formattedQueue}` : generatedQueue.formattedQueue,
 			components: [
 				{
 					type: ComponentType.ActionRow,
@@ -73,7 +71,7 @@ module.exports = new Command({
 			customEmbedProperties: {
 				footer: {
 					iconURL: interaction.member.displayAvatarURL(),
-					text: `Page ${generatedQueue.pageIndex + 1}/${player.lastQueuePage + 1}`,
+					text: generatedQueue.pageIndex === -1 ? null : `Page ${generatedQueue.pageIndex + 1}/${player.lastQueuePage + 1}`,
 				},
 			},
 		});
