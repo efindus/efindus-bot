@@ -1,4 +1,4 @@
-const youtubedl = require('youtube-dl-exec').exec;
+const playdl = require('play-dl');
 const { entersState, createAudioPlayer, createAudioResource, demuxProbe, NoSubscriberBehavior, VoiceConnectionStatus, VoiceConnectionDisconnectReason, AudioPlayerStatus } = require('@discordjs/voice');
 
 const time = require('../utils/time');
@@ -279,35 +279,15 @@ class Player {
 
 		this.#nowPlaying = this.#queue.shift();
 
-		// FIXME: When video has multiple audio tracks it used to select some non original one (for now that's only a problem when watching mrbeast's videos e.g. https://www.youtube.com/watch?v=3jS_yEK8qVI), currently it might be fixed (requires verificaiton)
-		const process = youtubedl(parse.getVideoURL(this.#nowPlaying.id), {
-			o: '-',
-			q: '',
-			f: 'bestaudio/best',
-			r: '100K',
-		}, { stdio: [ 'ignore', 'pipe', 'ignore' ] });
+		const stream = await playdl.stream(parse.getVideoURL(this.#nowPlaying.id));
+		this.#resource = createAudioResource(stream.stream, { inputType: stream.type, inlineVolume: true });
 
-		if (!process.stdout)
-			throw new Error('No youtube-dl stdout!');
-
-		const stream = process.stdout;
-
-		const onError = (error) => {
-			if (!process.killed)
-				process.kill();
-
-			stream.resume();
-			if (!error.message.includes('ERR_STREAM_PREMATURE_CLOSE')) throw error;
-		};
-		this.#resource = await new Promise((resolve) => {
-			process.once('spawn', () => {
-				demuxProbe(stream).then((probe) =>
-					resolve(createAudioResource(probe.stream, { metadata: this, inputType: probe.type, inlineVolume: true })),
-				).catch(onError);
-			}).catch(onError);
+		stream.stream.on('error', error => {
+			if (!error.message.includes('ERR_STREAM_PREMATURE_CLOSE'))
+				throw error;
 		});
 
-		this.#resource.playStream.on('end', () => {
+		this.#resource.playStream.on('close', () => {
 			if (this.#loopType === 1)
 				this.#queue.splice(0, 0, this.#nowPlaying);
 			else if (this.#loopType === 2)

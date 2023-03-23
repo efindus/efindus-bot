@@ -35,3 +35,11 @@ process.on('uncaughtException', error => {
 process.on('unhandledRejection', error => {
 	logger.error(error.stack ?? error.message);
 });
+
+const oldEmit = process.emitWarning;
+process.emitWarning = (warning, ctor) => {
+	if (warning.includes('Fetch API'))
+		return;
+	else
+		oldEmit(warning, ctor);
+};

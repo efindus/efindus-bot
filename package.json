@@ -1,6 +1,6 @@
 {
   "name": "efindus-bot",
-  "version": "4.1.0-rc2",
+  "version": "4.1.0-rc3",
   "description": "",
   "main": "src/index.js",
   "scripts": {
@@ -15,12 +15,12 @@
     "discord.js": "^14.8.0",
     "dotenv": "^16.0.3",
     "erlpack": "github:discord/erlpack",
+    "play-dl": "^1.9.6",
     "sodium-native": "^4.0.1",
     "utf-8-validate": "^6.0.3",
-    "youtube-dl-exec": "^2.4.0",
     "youtube-sr": "^4.3.4",
     "ytpl": "^2.3.0",
-    "ytsr": "^3.8.0",
+    "ytsr": "github:efindus/node-ytsr",
     "zlib-sync": "^0.1.8"
   },
   "devDependencies": {
