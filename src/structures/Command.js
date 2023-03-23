@@ -1,3 +1,16 @@
+/**
+ * @typedef VoiceRequirements
+ * 0 - none;
+ * 1 - guarantees that the bot is connected to a VC;
+ * 2 - additionally guarantees that the member running the command is connected to the same VC as the bot;
+ * @type {0 | 1 | 2}
+ */
+
+/**
+ * @typedef InteractionTypes
+ * @type {Record<'command' | 'button' | 'stringSelectMenu', { enabled: boolean, ephemeral?: boolean, deferReply?: boolean, voiceRequirements?: VoiceRequirements }>}
+ */
+
 class Response {
 	title;
 	message;
@@ -66,10 +79,10 @@ class Command {
 	}
 
 	/**
-	 * 0 - none
-	 * 1 - guarantees that the bot is connected to a VC
-	 * 2 - additionally guarantees that the member running the command is connected to the same VC as the bot
-	 * @type {0 | 1 | 2}
+	 * 0 - none;
+	 * 1 - guarantees that the bot is connected to a VC;
+	 * 2 - additionally guarantees that the member running the command is connected to the same VC as the bot;
+	 * @type {VoiceRequirements}
 	 */
 	get voiceRequirements() {
 		return this.#voiceRequirements;
@@ -77,7 +90,7 @@ class Command {
 
 	/**
 	 * Types of interactions forwarded to the command, if ephemeral or deferReply fields are present they will overwrite the main ones
-	 * @type {Record<'command' | 'button' | 'selectMenu', { enabled: boolean, ephemeral?: boolean, deferReply?: boolean, voiceRequirements?: 0 | 1 | 2 }>}
+	 * @type {InteractionTypes}
 	 */
 	get interactionTypes() {
 		return this.#interactionTypes;
@@ -105,10 +118,10 @@ class Command {
 	 * @param {boolean?} data.deferReply
 	 * @param {boolean?} data.editsMessage
 	 * @param {boolean?} data.availableInDMs
-	 * @param {null | 0 | 1 | 2} data.voiceRequirements
-	 * @param {Record<'command' | 'button' | 'selectMenu', { enabled: boolean, ephemeral?: boolean, deferReply?: boolean, voiceRequirements?: 0 | 1 | 2 }>?} data.interactionTypes
+	 * @param {VoiceRequirements?} data.voiceRequirements
+	 * @param {InteractionTypes?} data.interactionTypes
 	 * @param {import('discord.js').ApplicationCommandOptionData[]?} data.options
-	 * @param {(data: { bot: import('../bot').Bot, interaction: import('discord.js').Interaction, player: import('./Player').Player }) => Promise<Response>} data.run
+	 * @param {(data: { bot: import('../bot').Bot, interaction: import('discord.js').Interaction, player: import('./Player').Player, interactionType: 'command' | 'button' | 'stringSelectMenu' }) => Promise<Response>} data.run
 	 */
 	constructor(data) {
 		this.#name = data.name;

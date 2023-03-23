@@ -23,12 +23,12 @@ module.exports = new Command({
 			enabled: true,
 			ephemeral: true,
 		},
-		selectMenu: {
+		stringSelectMenu: {
 			enabled: true,
 		},
 	},
-	run: async ({ bot, interaction, player }) => {
-		if (interaction.isCommand()) {
+	run: async ({ bot, interaction, player, interactionType }) => {
+		if (interactionType === 'command') {
 			/**
 			 * @type {import('../index').QueueVideo[]}
 			 */
@@ -52,7 +52,7 @@ module.exports = new Command({
 							type: ComponentType.ActionRow,
 							components: [
 								{
-									type: ComponentType.SelectMenu,
+									type: ComponentType.StringSelect,
 									customId: 'search',
 									placeholder: 'Select a video',
 									options: videos,
@@ -63,7 +63,7 @@ module.exports = new Command({
 					ephemeral: true,
 				},
 			});
-		} else if (interaction.isSelectMenu()) {
+		} else if (interactionType === 'stringSelectMenu') {
 			/**
 			 * @type {import('../index').QueueVideo}
 			 */

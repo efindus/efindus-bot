@@ -27,15 +27,15 @@ module.exports = new Command({
 			voiceRequirements: 0,
 		},
 	},
-	run: async ({ interaction, player, bot }) => {
+	run: async ({ interaction, player, bot, interactionType }) => {
 		let generatedQueue;
-		if (interaction.isCommand()) {
+		if (interactionType === 'command') {
 			const pageIndex = (interaction.options.getInteger('page') ?? 1) - 1;
 			if (pageIndex < 0 || player.lastQueuePage < pageIndex)
 				throw new UserError('Invalid page number!');
 
 			generatedQueue = models.formatQueue(player, pageIndex);
-		} else if (interaction.isButton()) {
+		} else if (interactionType === 'button') {
 			const tokens = interaction.customId.split('-');
 			if (!player || +tokens[2] !== player.creationTS)
 				return;

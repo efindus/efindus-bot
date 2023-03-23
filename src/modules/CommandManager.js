@@ -7,7 +7,7 @@ const { UserError } = require('../utils/errors');
 /**
  * @param {import('../bot').Bot} bot
  * @param {import('discord.js').Interaction} interaction
- * @param {number} type
+ * @param {import('../structures/Command').VoiceRequirements} type
  */
 const verifyVoiceRequirements = async (bot, interaction, type) => {
 	if (type === 0)
@@ -64,8 +64,8 @@ class CommandManager {
 				interactionType = 'command', commandName = interaction.commandName;
 			else if (interaction.isButton())
 				interactionType = 'button', commandName = interaction.customId.split('-')[0];
-			else if (interaction.isSelectMenu())
-				interactionType = 'selectMenu', commandName = interaction.customId.split('-')[0];
+			else if (interaction.isStringSelectMenu())
+				interactionType = 'stringSelectMenu', commandName = interaction.customId.split('-')[0];
 
 			const command = this.#commands[commandName];
 			if (!command || !interaction.guild && !command.availableInDMs)
@@ -91,6 +91,7 @@ class CommandManager {
 				const response = await command.run({
 					bot,
 					interaction,
+					interactionType,
 					player: bot.playerManager.getPlayer(interaction.guild.id),
 				});
 
