@@ -95,6 +95,11 @@
 		],
 		"keyword-spacing": "error",
 		"comma-spacing": "error",
-		"key-spacing": "error"
+		"key-spacing": "error",
+		"no-mixed-spaces-and-tabs": [
+			"error",
+			"smart-tabs"
+		],
+		"no-constant-binary-expression": "error"
 	}
 }
