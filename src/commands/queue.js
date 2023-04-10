@@ -73,6 +73,7 @@ module.exports = new Command({
 					iconURL: interaction.member.displayAvatarURL(),
 					text: generatedQueue.pageIndex === -1 ? null : `Page ${generatedQueue.pageIndex + 1}/${player.lastQueuePage + 1}`,
 				},
+				color: generatedQueue.color === 'red' ? bot.config.colors.red : undefined,
 			},
 		});
 	},

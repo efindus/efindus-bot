@@ -29,11 +29,11 @@ new Bot({
 });
 
 process.on('uncaughtException', error => {
-	logger.error(error.stack ?? error.message);
+	logger.error(error.stack ?? error.message ?? 'Unknown error occurred!');
 });
 
 process.on('unhandledRejection', error => {
-	logger.error(error.stack ?? error.message);
+	logger.error(error.stack ?? error.message ?? 'Unknown error occurred!');
 });
 
 const oldEmit = process.emitWarning;

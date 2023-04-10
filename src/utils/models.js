@@ -46,5 +46,6 @@ exports.formatQueue = (player, pageIndex) => {
 	return {
 		formattedQueue: formattedQueue.length > 0 ? formattedQueue : '**Nothing is currently playing!**',
 		pageIndex: formattedQueue.length > 0 ? pageIndex : -1,
+		color: formattedQueue.length > 0 ? 'green' : 'red',
 	};
 };

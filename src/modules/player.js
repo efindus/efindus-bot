@@ -1,8 +1,9 @@
 const playdl = require('play-dl');
-const { entersState, createAudioPlayer, createAudioResource, demuxProbe, NoSubscriberBehavior, VoiceConnectionStatus, VoiceConnectionDisconnectReason, AudioPlayerStatus } = require('@discordjs/voice');
+const { entersState, createAudioPlayer, createAudioResource, NoSubscriberBehavior, VoiceConnectionStatus, VoiceConnectionDisconnectReason, AudioPlayerStatus } = require('@discordjs/voice');
 
 const time = require('../utils/time');
 const parse = require('../utils/parse');
+const { logger } = require('../utils/logger');
 const { UserError } = require('../utils/errors');
 
 class Player {
@@ -233,7 +234,7 @@ class Player {
 						// Probably moved voice channel
 					} catch {
 						// Probably removed from voice channel
-						this.#connection.destroy();
+						this.destroy();
 					}
 				} else if (this.#connection.rejoinAttempts < 5) {
 					// The disconnect in this case is recoverable, and we also have <5 repeated attempts so we will reconnect.
@@ -241,7 +242,7 @@ class Player {
 					this.#connection.rejoin();
 				} else {
 					// The disconnect in this case may be recoverable, but we have no more remaining attempts - destroy.
-					this.#connection.destroy();
+					this.destroy();
 				}
 			} else if (newState.status === VoiceConnectionStatus.Destroyed) {
 				// The End.
@@ -261,8 +262,7 @@ class Player {
 					this.#connection.subscribe(this.#player);
 					this.#onConnect();
 				} catch {
-					if (this.#connection.state.status !== VoiceConnectionStatus.Destroyed)
-						this.#connection.destroy();
+					this.destroy();
 				} finally {
 					this.#readyLock = false;
 				}
@@ -282,11 +282,6 @@ class Player {
 		const stream = await playdl.stream(parse.getVideoURL(this.#nowPlaying.id));
 		this.#resource = createAudioResource(stream.stream, { inputType: stream.type, inlineVolume: true });
 
-		stream.stream.on('error', error => {
-			if (!error.message.includes('ERR_STREAM_PREMATURE_CLOSE'))
-				throw error;
-		});
-
 		this.#resource.playStream.on('close', () => {
 			if (this.#loopType === 1)
 				this.#queue.splice(0, 0, this.#nowPlaying);
@@ -298,8 +293,8 @@ class Player {
 			this.play();
 		});
 
-		this.#resource.playStream.on('error', (error) => {
-			console.log(error);
+		this.#resource.playStream.on('error', (err) => {
+			logger.error(err.stack ?? err.message ?? 'Unknown error occurred!');
 		});
 
 		this.volume = this.#volume;
@@ -317,14 +312,11 @@ class Player {
 			if (this.#queue.length === 0 && this.#nowPlaying === null) {
 				throw new UserError('Nothing is currently playing!');
 			} else {
-				this.#player.stop();
-				const removed = [ this.#nowPlaying ];
-				this.#nowPlaying = null;
+				this.#player.stop(true);
 
+				const removed = [ this.#nowPlaying ];
 				if (amount > 1)
 					removed.push(...this.#queue.splice(0, amount - 1));
-
-				await this.play();
 
 				return removed;
 			}
@@ -364,9 +356,8 @@ class Player {
 		if (requestedPosition === null) {
 			this.#queue.push(...videos);
 		} else if (requestedPosition === 0) {
-			this.#player.stop();
-			this.#nowPlaying = null;
 			this.#queue.splice(0, 0, ...videos);
+			this.#player.stop(true);
 		} else {
 			this.#queue.splice(requestedPosition - 1, 0, ...videos);
 			queueIndex = requestedPosition;
@@ -436,9 +427,13 @@ class Player {
 	 * Destroy the player
 	 */
 	destroy() {
+		if (this.#isLeaving)
+			return;
+
 		this.#isLeaving = true;
 		this.resetAutoleave();
-		this.#player.stop();
+		this.#player.stop(true);
+		this.#resource = null, this.#player = null;
 		if (this.#connection.state.status !== VoiceConnectionStatus.Destroyed)
 			this.#connection.destroy();
 		this.#onDestroy();
