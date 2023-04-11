@@ -2,45 +2,44 @@ const ytsr = require('ytsr');
 const ytpl = require('ytpl');
 const youtubesr = require('youtube-sr').default;
 
-const parse = require('./parse');
 const { UserError } = require('./errors');
+const { Video } = require('../structures/Video');
+const { Playlist } = require('../structures/Playlist');
 
 /**
  * Find videos.
- * @param {string} title - Video's title.
- * @param {number} limit - Number of videos to find.
- * @returns {Promise<import('../index').PlaylistResult | import('../index').QueueVideo | import('../index').QueueVideo[]>} Videos.
+ * @template {number} T
+ * @param {string} query - Query (url or title).
+ * @param {T} limit - Number of videos to find.
+ * @returns {Promise<T extends 1 ? Playlist | Video : Video[]>} Videos.
  */
 exports.findVideos = async (query, limit) => {
-	let url = query.trim(), playlist = false;
+	let url = query.trim();
 
-	const videoID = parse.getVideoID(url);
-	if (videoID) {
-		url = parse.getVideoURL(videoID);
-	} else if (url.startsWith('https://www.youtube.com/')) {
-		playlist = true;
-	} else {
-		url = (await ytsr.getFilters(url)).get('Type').get('Video').url;
-
-		if (!url)
-			throw new UserError('Video could not be found.');
-	}
-
-	if (playlist && limit === 1) {
-		try {
-			return parse.getPlaylistResult(await ytpl(url, { limit: 200 }));
-		} catch (error) {
-			throw new UserError('Unknown playlist!');
-		}
-	} else {
-		if (limit !== 1 || url.startsWith('https://www.youtube.com/results')) {
-			const results = await ytsr(url, { limit: limit });
-			if (results.items.length === 0)
+	const videoID = Video.getID(url), playlistID = Playlist.getID(url);
+	if (limit === 1) {
+		if (videoID) {
+			const video = await youtubesr.getVideo(Video.getURL(videoID));
+			if (video)
+				return Video.fromRaw(video);
+			else
 				throw new UserError('Video could not be found.');
-
-			return limit === 1 ? parse.getQueueVideo(results.items[0]) : results.items.map(item => parse.getQueueVideo(item));
-		} else {
-			return parse.getQueueVideo(await youtubesr.getVideo(url));
+		} else if (playlistID) {
+			try {
+				return Playlist.fromRaw(await ytpl(Playlist.getURL(playlistID), { limit: 200 }));
+			} catch (error) {
+				throw new UserError('Unknown playlist!');
+			}
 		}
 	}
+
+	url = (await ytsr.getFilters(url)).get('Type').get('Video').url;
+	if (!url)
+		throw new UserError('Video could not be found.');
+
+	const results = await ytsr(url, { limit });
+	if (results.items.length === 0)
+		throw new UserError('Video could not be found.');
+
+	return limit === 1 ? Video.fromRaw(results.items[0]) : results.items.map(item => Video.fromRaw(item));
 };

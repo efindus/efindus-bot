@@ -1,8 +1,8 @@
 const { ApplicationCommandOptionType, ComponentType } = require('discord.js');
 
 const yt = require('../utils/youtube');
-const parse = require('../utils/parse');
 const models = require('../utils/models');
+const { Video } = require('../structures/Video');
 const { Command, Response } = require('../structures/Command');
 
 module.exports = new Command({
@@ -29,9 +29,6 @@ module.exports = new Command({
 	},
 	run: async ({ bot, interaction, player, interactionType }) => {
 		if (interactionType === 'command') {
-			/**
-			 * @type {import('../index').QueueVideo[]}
-			 */
 			const results = await yt.findVideos(interaction.options.getString('query'), 10);
 
 			const videos = [];
@@ -65,9 +62,9 @@ module.exports = new Command({
 			});
 		} else if (interactionType === 'stringSelectMenu') {
 			/**
-			 * @type {import('../index').QueueVideo}
+			 * @type {Video}
 			 */
-			const result = await yt.findVideos(parse.getVideoURL(interaction.values[0]), 1);
+			const result = await yt.findVideos(Video.getURL(interaction.values[0]), 1);
 			const position = await player.addToQueue([ result ]);
 
 			return new Response({
@@ -76,7 +73,7 @@ module.exports = new Command({
 				message: `${models.formatVideo(result)}`,
 				customEmbedProperties: {
 					thumbnail: {
-						url: parse.getVideoThumbnailURL(result.id),
+						url: result.thumbnailURL,
 					},
 					footer: {
 						iconURL: interaction.member.displayAvatarURL(),

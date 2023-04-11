@@ -2,20 +2,19 @@ const playdl = require('play-dl');
 const { entersState, createAudioPlayer, createAudioResource, NoSubscriberBehavior, VoiceConnectionStatus, VoiceConnectionDisconnectReason, AudioPlayerStatus } = require('@discordjs/voice');
 
 const time = require('../utils/time');
-const parse = require('../utils/parse');
 const { logger } = require('../utils/logger');
 const { UserError } = require('../utils/errors');
 
 class Player {
 	/**
 	 * Currently played video
-	 * @type {import('../index').QueueVideo}
+	 * @type {import('../structures/Video').Video}
 	 */
 	#nowPlaying = null;
 
 	/**
 	 * Queue of upcoming videos
-	 * @type {import('../index').QueueVideo[]}
+	 * @type {import('../structures/Video').Video[]}
 	 */
 	#queue = [];
 
@@ -279,7 +278,7 @@ class Player {
 
 		this.#nowPlaying = this.#queue.shift();
 
-		const stream = await playdl.stream(parse.getVideoURL(this.#nowPlaying.id));
+		const stream = await playdl.stream(this.#nowPlaying.url);
 		this.#resource = createAudioResource(stream.stream, { inputType: stream.type, inlineVolume: true });
 
 		this.#resource.playStream.on('close', () => {
@@ -305,7 +304,7 @@ class Player {
 	 * Skips a number of videos.
 	 * @param {number} index - Position to start removing from
 	 * @param {number} amount - Amount of videos to remove
-	 * @returns {import('../index').QueueVideo[]} - Removed videos
+	 * @returns Removed videos
 	 */
 	async skip(index, amount) {
 		if ([ null, 0 ].includes(index)) {
@@ -348,7 +347,7 @@ class Player {
 
 	/**
 	 * Add a video to the queue.
-	 * @param {import('./index').QueueVideo[]} videos - The video.
+	 * @param {import('../structures/Video').Video[]} videos - The video.
 	 * @param {number} requestedPosition - Position to put new videos at.
 	 */
 	async addToQueue(videos, requestedPosition = null) {

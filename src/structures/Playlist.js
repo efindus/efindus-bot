@@ -1,5 +1,8 @@
+const URL = require('url');
+
 const { Video } = require('./Video');
 
+const playlistIDRegex = /(PL|FL|UU|LL|RD|OL)[a-zA-Z0-9-_]{16,41}/;
 class Playlist {
 	#id;
 	#title;
@@ -36,6 +39,10 @@ class Playlist {
 		return this.#duration;
 	}
 
+	get url() {
+		return Playlist.getURL(this.#id);
+	}
+
 	/**
 	 * URL for the thumbnail of the playlist
 	 */
@@ -51,11 +58,48 @@ class Playlist {
 	}
 
 	/**
+	 * Get playlist ID from a URL
+	 * @param {string} url - URL to parse playlist ID from
+	 * @returns {string} Playlist ID
+	 */
+	static getID(url) {
+		const parsedUrl = URL.parse(url.trim(), true);
+
+		const playlistID = (parsedUrl.host && parsedUrl.host.endsWith('youtube.com') && parsedUrl.pathname === '/playlist' ? parsedUrl.query['list'] : '');
+		if (playlistID.match(playlistIDRegex))
+			return playlistID;
+		else
+			return null;
+	}
+
+	/**
+	 * Get URL of a playlist with given ID
+	 * @param {string} playlistID - Playlist ID to make URL out of
+	 * @returns {string} URL to a playlist with given ID
+	 */
+	static getURL(playlistID) {
+		return `https://www.youtube.com/playlist?list=${playlistID}`;
+	}
+
+	/**
+	 * Turn a playlist object returned by ytpl into the internal Playlist class
+	 * @param {import('ytpl').Result} rawPlaylist - Playlist object to convert
+	 */
+	static fromRaw(rawPlaylist) {
+		return new Playlist({
+			id: rawPlaylist.id,
+			title: rawPlaylist.title,
+			author: rawPlaylist.author.name,
+			thumbnailURL: rawPlaylist.bestThumbnail.url.split('?')[0],
+			videos: rawPlaylist.items.map(item => Video.fromRaw(item)),
+		});
+	}
+
+	/**
 	 * @param {object} data
 	 * @param {string} data.id
 	 * @param {string} data.title
 	 * @param {string} data.author
-	 * @param {number} data.duration
 	 * @param {string} data.thumbnailURL
 	 * @param {Video[]} data.videos
 	 */
@@ -63,9 +107,11 @@ class Playlist {
 		this.#id = data.id;
 		this.#title = data.title;
 		this.#author = data.author;
-		this.#duration = data.duration;
 		this.#thumbnailURL = data.thumbnailURL;
 		this.#videos = data.videos;
+
+		this.#duration = 0;
+		this.#videos.forEach(video => this.#duration += video.duration, this);
 	}
 }
 

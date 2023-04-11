@@ -1,23 +1,22 @@
 const time = require('./time');
-const parse = require('./parse');
 
 /**
  * Generate text with video name, author and duration hyperlinked to YouTube
- * @param {import('../index').QueueVideo} queueVideo - Video to represent
+ * @param {import('../structures/Video').Video} video - Video to represent
  * @returns {string} Formatted text
  */
-exports.formatVideo = (queueVideo) => {
-	return this.formatVideoWithProgress(queueVideo, null);
+exports.formatVideo = (video) => {
+	return this.formatVideoWithProgress(video, null);
 };
 
 /**
  * Generate text with video name, author, duration and progress hyperlinked to YouTube
- * @param {import('../index').QueueVideo} queueVideo - Video to represent
+ * @param {import('../structures/Video').Video} video - Video to represent
  * @param {number | null} progressMS - Current playback position in MS
  * @returns {string} Formatted text
  */
-exports.formatVideoWithProgress = (queueVideo, progressMS) => {
-	return `[${queueVideo.title} [${progressMS ? `${time.formatMS(progressMS)}/` : ''}${time.formatMS(queueVideo.duration)}]](${parse.getVideoURL(queueVideo.id)}) by **${queueVideo.author}**`;
+exports.formatVideoWithProgress = (video, progressMS) => {
+	return `[${video.title} [${progressMS ? `${time.formatMS(progressMS)}/` : ''}${time.formatMS(video.duration)}]](${video.url}) by **${video.author}**`;
 };
 
 /**

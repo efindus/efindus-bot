@@ -1,9 +1,10 @@
 const { ApplicationCommandOptionType } = require('discord.js');
 
 const yt = require('../utils/youtube');
-const parse = require('../utils/parse');
 const models = require('../utils/models');
 const { UserError } = require('../utils/errors');
+const { Video } = require('../structures/Video');
+const { Playlist } = require('../structures/Playlist');
 const { Command, Response } = require('../structures/Command');
 
 module.exports = new Command({
@@ -26,21 +27,17 @@ module.exports = new Command({
 	deferReply: true,
 	voiceRequirements: 2,
 	run: async ({ bot, interaction, player }) => {
-		const results = await yt.findVideos(interaction.options.getString('query'), 1), requestedPosition = interaction.options.getInteger('position');
+		const result = await yt.findVideos(interaction.options.getString('query'), 1), requestedPosition = interaction.options.getInteger('position');
 
 		if (requestedPosition < 0 || player.queueLength < requestedPosition)
 			throw new UserError('Invalid position requested!');
 
-		if (results.videos) {
-			/**
-			 * @type {import('../index').PlaylistResult}
-			 */
-			const result = results;
+		if (result instanceof Playlist) {
 			const position = await player.addToQueue(result.videos, requestedPosition);
 
 			return new Response({
 				title: `${bot.config.emotes.check} Playlist has been added to the queue [${result.videos.length + 1} video${result.videos.length + 1 === 1 ? '' : 's'}]! (#${position})`,
-				message: `[${result.title}](${parse.getPlaylistURL(result.id)}) by **${result.author}**`,
+				message: `[${result.title}](${result.thumbnailURL}) by **${result.author}**`,
 				customFormatting: true,
 				customEmbedProperties: {
 					thumbnail: {
@@ -53,10 +50,6 @@ module.exports = new Command({
 				},
 			});
 		} else {
-			/**
-			 * @type {import('../index').QueueVideo}
-			 */
-			const result = results;
 			const position = await player.addToQueue([ result ], requestedPosition);
 
 			return new Response({
@@ -65,7 +58,7 @@ module.exports = new Command({
 				customFormatting: true,
 				customEmbedProperties: {
 					thumbnail: {
-						url: parse.getVideoThumbnailURL(result.id),
+						url: result.thumbnailURL,
 					},
 					footer: {
 						iconURL: interaction.member.displayAvatarURL(),
