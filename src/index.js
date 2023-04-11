@@ -2,9 +2,9 @@ require('dotenv').config();
 const { existsSync } = require('fs');
 
 require('./utils/array');
+require('./utils/errorHandler');
 const { Bot } = require('./bot');
 const config = existsSync('./config.js') ? require('../config') : require('../config.example');
-const { logger } = require('./utils/logger');
 
 /*
  * ROADMAP:
@@ -28,19 +28,3 @@ new Bot({
 	mongoConnectionString: process.env.DB_CONNECTION_STRING,
 	config: config,
 });
-
-process.on('uncaughtException', error => {
-	logger.error(error.stack ?? error.message ?? 'Unknown error occurred!');
-});
-
-process.on('unhandledRejection', error => {
-	logger.error(error.stack ?? error.message ?? 'Unknown error occurred!');
-});
-
-const oldEmit = process.emitWarning;
-process.emitWarning = (warning, ctor) => {
-	if (warning.includes('Fetch API'))
-		return;
-	else
-		oldEmit(warning, ctor);
-};

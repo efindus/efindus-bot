@@ -2,8 +2,7 @@ const playdl = require('play-dl');
 const { entersState, createAudioPlayer, createAudioResource, NoSubscriberBehavior, VoiceConnectionStatus, VoiceConnectionDisconnectReason, AudioPlayerStatus } = require('@discordjs/voice');
 
 const time = require('../utils/time');
-const { logger } = require('../utils/logger');
-const { UserError } = require('../utils/errors');
+const { handleError, UserError } = require('../utils/errorHandler');
 
 class Player {
 	/**
@@ -293,7 +292,7 @@ class Player {
 		});
 
 		this.#resource.playStream.on('error', (err) => {
-			logger.error(err.stack ?? err.message ?? 'Unknown error occurred!');
+			handleError(err, { guildId: this.#connection.joinConfig.guildId });
 		});
 
 		this.volume = this.#volume;

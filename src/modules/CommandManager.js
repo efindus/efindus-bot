@@ -1,8 +1,7 @@
 const { join, resolve } = require('path');
 
 const { Command } = require('../structures/Command');
-const { logger } = require('../utils/logger');
-const { UserError } = require('../utils/errors');
+const { handleError, UserError } = require('../utils/errorHandler');
 
 /**
  * @param {import('../bot').Bot} bot
@@ -128,8 +127,8 @@ class CommandManager {
 					await interaction.reply(replyObject);
 			} catch (error) {
 				if (!(error instanceof UserError)) {
-					logger.error(error.stack ?? error.message);
-					error.message = 'An unexpected error occured. Please notify @Findus#7449';
+					handleError(error, { guildId: interaction.guildId, userId: interaction.user.id }, interaction);
+					error.message = 'Oopsie! An unexpected error occurred.';
 				}
 
 				const replyObject = {

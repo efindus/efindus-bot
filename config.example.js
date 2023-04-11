@@ -10,4 +10,7 @@ module.exports = {
 		cross: ':x:',
 		loading: ':leftwards_arrow_with_hook:',
 	},
+	channels: {
+		errors: '<your-channel-id>',
+	},
 };

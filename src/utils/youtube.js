@@ -2,7 +2,7 @@ const ytsr = require('ytsr');
 const ytpl = require('ytpl');
 const youtubesr = require('youtube-sr').default;
 
-const { UserError } = require('./errors');
+const { UserError } = require('./errorHandler');
 const { Video } = require('../structures/Video');
 const { Playlist } = require('../structures/Playlist');
 

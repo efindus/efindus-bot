@@ -1,7 +1,7 @@
 const { joinVoiceChannel } = require('@discordjs/voice');
 
 const { Player } = require('../structures/Player');
-const { UserError } = require('../utils/errors');
+const { UserError } = require('../utils/errorHandler');
 
 class PlayerManager {
 	/**

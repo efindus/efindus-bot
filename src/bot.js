@@ -2,6 +2,7 @@ const { Client, GatewayIntentBits, ActivityType } = require('discord.js');
 
 require('./utils/array');
 const { logger } = require('./utils/logger');
+const { initializeErrorHandler } = require('./utils/errorHandler');
 const { PlayerManager } = require('./modules/PlayerManager');
 const { CommandManager } = require('./modules/CommandManager');
 const { DatabaseManager } = require('./modules/DatabaseManager');
@@ -33,6 +34,7 @@ class Bot {
 			},
 		});
 
+		initializeErrorHandler(this);
 		this.playerManager = new PlayerManager(this);
 		this.commandManager = new CommandManager(this);
 		this.databaseManager = new DatabaseManager(this, data.mongoConnectionString);

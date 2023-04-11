@@ -2,9 +2,8 @@ const { ApplicationCommandOptionType } = require('discord.js');
 
 const yt = require('../utils/youtube');
 const models = require('../utils/models');
-const { UserError } = require('../utils/errors');
-const { Video } = require('../structures/Video');
 const { Playlist } = require('../structures/Playlist');
+const { UserError } = require('../utils/errorHandler');
 const { Command, Response } = require('../structures/Command');
 
 module.exports = new Command({

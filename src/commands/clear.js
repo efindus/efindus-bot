@@ -1,4 +1,4 @@
-const { UserError } = require('../utils/errors');
+const { UserError } = require('../utils/errorHandler');
 const { Command, Response } = require('../structures/Command');
 
 module.exports = new Command({
