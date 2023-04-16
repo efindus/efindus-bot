@@ -8,19 +8,17 @@ const config = existsSync('./config.js') ? require('../config') : require('../co
 
 /*
  * ROADMAP:
- * show duration in more places (and make queue total duration)
- * think about making a /djcontrols command which would allow to perform various actions using buttons and selection menus (pause, resume, loop control etc)
- * start utilizing the footer (like in the old play), after this rename old newFindusBot repo into NeverFindusBoT and switch to using that as a remote
- * implement seek (mainly as a functionality to power filters)
+ * finish rewrite (implement Queue, remove models.js)
+ * show duration when queuing a playlist (and maybe time to play), add total queue duration in /queue
+ * add /djcontrols command which would allow to control playback using buttons and selection menus (pause, resume, loop control etc)
+ * implement /seek (to power filters and sponsorblock)
  * add /dev command (for now just /dev eval and /dev help), responses should be ephemeral and the command should only have one argument (a string) as it will be visible to everyone due to the way slash commands work
- * add filters (from here: https://github.com/Androz2091/discord-player/blob/master/src/utils/AudioFilters.ts)
- * aim for version 4.1.0 here
+ * add sponsorblock support
+ * add filters (from here: https://github.com/Androz2091/discord-player/blob/master/packages/discord-player/src/utils/AudioFilters.ts)
  * more dev commands and random utility ones like poll, rng etc.
- * 4.2.0 here
  * soundcloud support
- * 4.3.0 here
- * (reminder for the future) bump version
- * https://github.com/discordjs/discord.js/blob/main/packages/voice/examples/music-bot/src/music
+ *
+ * reference: https://github.com/discordjs/discord.js/tree/72577c4bfd02524a27afb6ff4aebba9301a690d3/packages/voice/examples/music-bot
  */
 
 new Bot({

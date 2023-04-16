@@ -81,9 +81,9 @@ const handleError = async (error, errorMeta, interaction) => {
 		let embedDescription = undefined;
 
 		if (interaction) {
-			let commandInfo = `name: ${interaction.commandName ?? interaction.customId}`;
+			let commandInfo = `${interaction.commandName ? '/' : ''}${interaction.commandName ?? interaction.customId}`;
 			if (interaction.options)
-				commandInfo += `, args: [ ${interaction.options.data.map(opt => `{ n: ${opt.name}, v: ${opt.value ?? '[NONE]'} }`).join(', ')} ]`;
+				commandInfo += ` ${interaction.options.data.map(opt => `${opt.name}: ${opt.value ?? '[NONE]'}`).join(' ')}`;
 
 			embedDescription = `**[Command]:**\n\`\`\`${sanitizeString(commandInfo)}\`\`\``;
 		}

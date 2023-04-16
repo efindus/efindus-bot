@@ -1,11 +1,11 @@
 {
   "name": "efindus-bot",
-  "version": "4.2.0-beta.2",
+  "version": "4.2.0-beta.3",
   "description": "",
   "main": "src/index.js",
   "scripts": {
     "start": "node .",
-		"dev": "NODE_ENV=development node ."
+    "dev": "NODE_ENV=development node ."
   },
   "author": "efindus",
   "license": "GPL-3.0",
