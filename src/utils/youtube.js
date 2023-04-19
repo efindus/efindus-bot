@@ -37,7 +37,18 @@ exports.findVideos = async (query, limit) => {
 		}
 	}
 
-	url = (await ytsr.getFilters(url)).get('Type').get('Video').url;
+	let retryCount = 5;
+	do {
+		const filter = (await ytsr.getFilters(url)).get('Type');
+		if (filter) {
+			url = filter.get('Video').url;
+			break;
+		}
+	} while (retryCount--);
+
+	if (retryCount === -1)
+		throw new ResponseError('Video could not be found.');
+
 	if (!url)
 		throw new ResponseError('Video could not be found.');
 

@@ -10,8 +10,8 @@ const config = existsSync('./config.js') ? require('../config') : require('../co
  * ROADMAP:
  * finish rewrite (implement Queue, remove models.js)
  * show duration when queuing a playlist (and maybe time to play), add total queue duration in /queue
- * add /djcontrols command which would allow to control playback using buttons and selection menus (pause, resume, loop control etc)
  * implement /seek (to power filters and sponsorblock)
+ * add /djcontrols command which would allow to control playback using buttons and selection menus (pause, resume, loop control etc)
  * add /dev command (for now just /dev eval and /dev help), responses should be ephemeral and the command should only have one argument (a string) as it will be visible to everyone due to the way slash commands work
  * add sponsorblock support
  * add filters (from here: https://github.com/Androz2091/discord-player/blob/master/packages/discord-player/src/utils/AudioFilters.ts)
