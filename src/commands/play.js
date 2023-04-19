@@ -3,8 +3,7 @@ const { ApplicationCommandOptionType } = require('discord.js');
 const yt = require('../utils/youtube');
 const models = require('../utils/models');
 const { Playlist } = require('../structures/Playlist');
-const { UserError } = require('../utils/errorHandler');
-const { Command, Response } = require('../structures/Command');
+const { Command, Response, ResponseError } = require('../structures/Command');
 
 module.exports = new Command({
 	name: 'play',
@@ -29,7 +28,7 @@ module.exports = new Command({
 		const result = await yt.findVideos(interaction.options.getString('query'), 1), requestedPosition = interaction.options.getInteger('position');
 
 		if (requestedPosition < 0 || player.queueLength < requestedPosition)
-			throw new UserError('Invalid position requested!');
+			throw new ResponseError('Invalid position requested!');
 
 		if (result instanceof Playlist) {
 			const position = await player.addToQueue(result.videos, requestedPosition);

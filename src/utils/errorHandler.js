@@ -103,11 +103,6 @@ const handleError = async (error, errorMeta, interaction) => {
 	}
 };
 
-/**
- * Error caused by the user. Should not be logged to console.
- */
-class UserError extends Error {}
-
 (() => {
 	process.on('uncaughtException', (error) => {
 		handleError(error);
@@ -126,4 +121,4 @@ class UserError extends Error {}
 	};
 })();
 
-module.exports = { initializeErrorHandler, handleError, UserError };
+module.exports = { initializeErrorHandler, handleError };

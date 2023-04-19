@@ -1,5 +1,4 @@
-const { UserError } = require('../utils/errorHandler');
-const { Command, Response } = require('../structures/Command');
+const { Command, Response, ResponseError } = require('../structures/Command');
 
 module.exports = new Command({
 	name: 'delayautoleave',
@@ -7,7 +6,7 @@ module.exports = new Command({
 	voiceRequirements: 0,
 	run: async ({ player }) => {
 		if (!player)
-			throw new UserError('I\'m not connected to any voice channel on this server.');
+			throw new ResponseError('I\'m not connected to any voice channel on this server.');
 
 		player.delayAutoleave();
 

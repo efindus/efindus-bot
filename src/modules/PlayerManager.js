@@ -1,7 +1,7 @@
 const { joinVoiceChannel } = require('@discordjs/voice');
 
 const { Player } = require('../structures/Player');
-const { UserError } = require('../utils/errorHandler');
+const { ResponseError } = require('../structures/Command');
 
 class PlayerManager {
 	/**
@@ -48,10 +48,10 @@ class PlayerManager {
 			return this.#players[user.guild.id];
 
 		if (!user.voice.channel)
-			throw new UserError('You\'re not connected to any voice channel on this server.');
+			throw new ResponseError('You\'re not connected to any voice channel on this server.');
 
 		if (!user.voice.channel.joinable)
-			throw new UserError('I don\'t have sufficient permissions to join this voice channel!');
+			throw new ResponseError('I don\'t have sufficient permissions to join this voice channel!');
 
 		if (!user.guild.members.me.voice.channel || !this.#players[user.guild.id]) {
 			const connection = await joinVoiceChannel({
@@ -72,7 +72,7 @@ class PlayerManager {
 
 			return this.#players[user.guild.id];
 		} else if (user.voice.channelId !== user.guild.members.me.voice.channelId) {
-			throw new UserError(`You're not connected to <#${user.guild.members.me.voice.channelId}>`);
+			throw new ResponseError(`You're not connected to <#${user.guild.members.me.voice.channelId}>`);
 		}
 	}
 

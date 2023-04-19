@@ -1,7 +1,7 @@
 const { join, resolve } = require('path');
 
-const { Command } = require('../structures/Command');
-const { handleError, UserError } = require('../utils/errorHandler');
+const { Command, ResponseError } = require('../structures/Command');
+const { handleError } = require('../utils/errorHandler');
 
 /**
  * @param {import('../bot').Bot} bot
@@ -16,12 +16,12 @@ const verifyVoiceRequirements = async (bot, interaction, type) => {
 		if (interaction.member.voice.channelId)
 			await bot.playerManager.connect(interaction.member);
 		else
-			throw new UserError('I\'m not connected to any voice channel on this server.');
+			throw new ResponseError('I\'m not connected to any voice channel on this server.');
 	}
 
 	if (type === 2) {
 		if (interaction.member.voice.channelId !== interaction.guild.members.me.voice.channelId)
-			throw new UserError(`You're not connected to <#${interaction.guild.members.me.voice.channelId}>`);
+			throw new ResponseError(`You're not connected to <#${interaction.guild.members.me.voice.channelId}>`);
 	}
 };
 
@@ -126,7 +126,7 @@ class CommandManager {
 				else
 					await interaction.reply(replyObject);
 			} catch (error) {
-				if (!(error instanceof UserError)) {
+				if (!(error instanceof ResponseError)) {
 					handleError(error, { guildId: interaction.guildId, userId: interaction.user.id }, interaction);
 					error.message = 'Oopsie! An unexpected error occurred.';
 				}

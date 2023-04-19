@@ -11,6 +11,11 @@
  * @type {Record<'command' | 'button' | 'stringSelectMenu', { enabled: boolean, ephemeral?: boolean, deferReply?: boolean, voiceRequirements?: VoiceRequirements }>}
  */
 
+/**
+ * Error caused by the user. Should not be logged to console.
+ */
+class ResponseError extends Error {}
+
 class Response {
 	title;
 	message;
@@ -137,4 +142,4 @@ class Command {
 	}
 }
 
-module.exports = { Command, Response };
+module.exports = { Command, Response, ResponseError };

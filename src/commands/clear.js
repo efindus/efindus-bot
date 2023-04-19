@@ -1,5 +1,4 @@
-const { UserError } = require('../utils/errorHandler');
-const { Command, Response } = require('../structures/Command');
+const { Command, Response, ResponseError } = require('../structures/Command');
 
 module.exports = new Command({
 	name: 'clear',
@@ -7,7 +6,7 @@ module.exports = new Command({
 	voiceRequirements: 2,
 	run: async ({ player }) => {
 		if (player.queueLength === 0)
-			throw new UserError('The queue is empty!');
+			throw new ResponseError('The queue is empty!');
 		else
 			player.clearQueue();
 

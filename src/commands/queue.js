@@ -1,8 +1,7 @@
 const { ApplicationCommandOptionType, ComponentType, ButtonStyle } = require('discord.js');
 
 const models = require('../utils/models');
-const { UserError } = require('../utils/errorHandler');
-const { Command, Response } = require('../structures/Command');
+const { Command, Response, ResponseError } = require('../structures/Command');
 
 module.exports = new Command({
 	name: 'queue',
@@ -32,7 +31,7 @@ module.exports = new Command({
 		if (interactionType === 'command') {
 			const pageIndex = (interaction.options.getInteger('page') ?? 1) - 1;
 			if (pageIndex < 0 || player.lastQueuePage < pageIndex)
-				throw new UserError('Invalid page number!');
+				throw new ResponseError('Invalid page number!');
 
 			generatedQueue = models.formatQueue(player, pageIndex);
 		} else if (interactionType === 'button') {

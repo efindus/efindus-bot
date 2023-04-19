@@ -2,7 +2,8 @@ const playdl = require('play-dl');
 const { entersState, createAudioPlayer, createAudioResource, NoSubscriberBehavior, VoiceConnectionStatus, VoiceConnectionDisconnectReason, AudioPlayerStatus } = require('@discordjs/voice');
 
 const time = require('../utils/time');
-const { handleError, UserError } = require('../utils/errorHandler');
+const { handleError } = require('../utils/errorHandler');
+const { ResponseError } = require('../structures/Command');
 
 class Player {
 	/**
@@ -141,7 +142,7 @@ class Player {
 	 */
 	set volume(newVolume) {
 		if (newVolume < 0 || 200 < newVolume)
-			throw new UserError('Invalid volume! Available range: 0-200%');
+			throw new ResponseError('Invalid volume! Available range: 0-200%');
 
 		this.#volume = newVolume;
 		if (this.#resource !== null)
@@ -277,7 +278,28 @@ class Player {
 
 		this.#nowPlaying = this.#queue.shift();
 
-		const stream = await playdl.stream(this.#nowPlaying.url);
+		const vidInfo = await playdl.video_info(this.#nowPlaying.url);
+		vidInfo.format.reverse();
+
+		for (const info of vidInfo.format) {
+			if (info.mimeType.split('codecs="')[1].split('"')[0] === 'opus' && info.mimeType.split('audio/')[1].split(';')[0] === 'webm') {
+				vidInfo.format = [ info ];
+				break;
+			}
+		}
+
+		if (vidInfo.format.length !== 1)
+			vidInfo.format.reverse();
+
+		const stream = await playdl.stream_from_info(vidInfo);
+		const errListener = (err) => {
+			if (!err.stack.includes('ERR_STREAM_PREMATURE_CLOSE')) {
+				err.stack = `[${vidInfo.video_details.url}; ${JSON.stringify(vidInfo.format[vidInfo.format.length - 1])}]\n${err.stack}`;
+				handleError(err, { guildId: this.#connection.joinConfig.guildId });
+			}
+		};
+		stream.stream.on('error', errListener);
+
 		this.#resource = createAudioResource(stream.stream, { inputType: stream.type, inlineVolume: true });
 
 		this.#resource.playStream.on('close', () => {
@@ -286,6 +308,7 @@ class Player {
 			else if (this.#loopType === 2)
 				this.#queue.push(this.#nowPlaying);
 
+			stream.stream?.off('error', errListener);
 			this.#nowPlaying = null;
 			this.#resource = null;
 			this.play();
@@ -308,7 +331,7 @@ class Player {
 	async skip(index, amount) {
 		if ([ null, 0 ].includes(index)) {
 			if (this.#queue.length === 0 && this.#nowPlaying === null) {
-				throw new UserError('Nothing is currently playing!');
+				throw new ResponseError('Nothing is currently playing!');
 			} else {
 				this.#player.stop(true);
 
@@ -320,9 +343,9 @@ class Player {
 			}
 		} else {
 			if (this.#queue.length === 0)
-				throw new UserError('The queue is empty!');
+				throw new ResponseError('The queue is empty!');
 			else if (index < 0 || this.#queue.length < index)
-				throw new UserError('Invalid index!');
+				throw new ResponseError('Invalid index!');
 			else
 				return this.#queue.splice(index - 1, amount);
 		}
@@ -406,9 +429,10 @@ class Player {
 	 */
 	delayAutoleave() {
 		if (this.#autoleaveTimeout === null)
-			throw new UserError('I\'m not currently autoleaving!');
+			throw new ResponseError('I\'m not currently autoleaving!');
+
 		if (this.#delayedAutoleave !== 0)
-			throw new UserError('Autoleave was already delayed!');
+			throw new ResponseError('Autoleave was already delayed!');
 		this.#delayedAutoleave = 1;
 	}
 

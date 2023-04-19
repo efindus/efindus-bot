@@ -1,5 +1,4 @@
-const { UserError } = require('../utils/errorHandler');
-const { Command, Response } = require('../structures/Command');
+const { Command, Response, ResponseError } = require('../structures/Command');
 
 module.exports = new Command({
 	name: 'pause',
@@ -7,13 +6,13 @@ module.exports = new Command({
 	voiceRequirements: 2,
 	run: async ({ player }) => {
 		if (player.nowPlaying === null)
-			throw new UserError('Nothing is currently playing!');
+			throw new ResponseError('Nothing is currently playing!');
 
 		if (player.isPaused)
-			throw new UserError('The video is already paused!');
+			throw new ResponseError('The video is already paused!');
 
 		if (!player.pause())
-			throw new UserError('Failed to pause the video!');
+			throw new ResponseError('Failed to pause the video!');
 
 		return new Response({
 			message: 'Paused the video!',
