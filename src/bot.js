@@ -27,11 +27,6 @@ class Bot {
 			intents: [
 				GatewayIntentBits.Guilds, GatewayIntentBits.GuildVoiceStates,
 			],
-			ws: {
-				properties: {
-					browser: 'Discord Android',
-				},
-			},
 		});
 
 		initializeErrorHandler(this);
