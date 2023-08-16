@@ -35,7 +35,7 @@ module.exports = new Command({
 
 			return new Response({
 				title: `${bot.config.emotes.check} Playlist has been added to the queue [${result.videos.length + 1} video${result.videos.length + 1 === 1 ? '' : 's'}]! (#${position})`,
-				message: `[${result.title}](${result.thumbnailURL}) by **${result.author}**`,
+				message: `[${result.title}](${result.url}) by **${result.author}**`,
 				customFormatting: true,
 				customEmbedProperties: {
 					thumbnail: {
