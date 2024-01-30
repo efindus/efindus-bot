@@ -11,20 +11,20 @@
   "license": "GPL-3.0",
   "dependencies": {
     "@discordjs/opus": "^0.9.0",
-    "@discordjs/voice": "^0.16.0",
-    "bufferutil": "^4.0.7",
-    "discord.js": "^14.13.0",
-    "dotenv": "^16.3.1",
-    "mongodb": "^6.1.0",
+    "@discordjs/voice": "^0.16.1",
+    "bufferutil": "^4.0.8",
+    "discord.js": "^14.14.1",
+    "dotenv": "^16.4.1",
+    "mongodb": "^6.3.0",
     "play-dl": "^1.9.7",
-    "sodium-native": "^4.0.4",
+    "sodium-native": "^4.0.6",
     "utf-8-validate": "^6.0.3",
-    "youtube-sr": "^4.3.4",
+    "youtube-sr": "^4.3.10",
     "ytpl": "^2.3.0",
     "ytsr": "^3.8.4",
-    "zlib-sync": "^0.1.8"
+    "zlib-sync": "^0.1.9"
   },
   "devDependencies": {
-    "eslint": "^8.51.0"
+    "eslint": "^8.56.0"
   }
 }
