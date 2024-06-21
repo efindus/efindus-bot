@@ -9,22 +9,22 @@
   },
   "author": "efindus",
   "license": "GPL-3.0",
+  "devDependencies": {
+    "eslint": "^8.57.0"
+  },
   "dependencies": {
     "@discordjs/opus": "^0.9.0",
     "@discordjs/voice": "^0.16.1",
     "bufferutil": "^4.0.8",
     "discord.js": "^14.14.1",
-    "dotenv": "^16.4.1",
-    "mongodb": "^6.3.0",
+    "dotenv": "^16.4.5",
+    "mongodb": "^6.5.0",
     "play-dl": "^1.9.7",
-    "sodium-native": "^4.0.6",
+    "sodium-native": "^4.1.1",
     "utf-8-validate": "^6.0.3",
     "youtube-sr": "^4.3.10",
     "ytpl": "^2.3.0",
     "ytsr": "^3.8.4",
     "zlib-sync": "^0.1.9"
-  },
-  "devDependencies": {
-    "eslint": "^8.56.0"
   }
 }
